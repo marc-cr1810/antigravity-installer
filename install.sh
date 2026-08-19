@@ -122,44 +122,27 @@ install_deps_debian() {
   fi
 }
 
-resolve_main_bundle() {
+fetch_download_page() {
   local tmpdir="$1"
   local html="$tmpdir/download.html"
-  local js="$tmpdir/download.js"
   curl -fsSL --compressed --retry 3 -o "$html" "$DOWNLOAD_PAGE"
-  local main_js_url
-  main_js_url=$(python3 - "$html" "$DOWNLOAD_PAGE" <<'PY'
-import re, sys
-from pathlib import Path
-from urllib.parse import urljoin
-html = Path(sys.argv[1]).read_text(errors='replace')
-page = sys.argv[2]
-# Prefer the application bundle that contains the download data.
-matches = re.findall(r'(?:src|href)=["\']([^"\']*main-[^"\']+\.js)["\']', html)
-if not matches:
-    matches = re.findall(r'(?:src|href)=["\']([^"\']+\.js)["\']', html)
-if not matches:
-    raise SystemExit('Could not find JavaScript bundle on the official Antigravity download page')
-print(urljoin(page, matches[-1]))
-PY
-)
-  curl -fsSL --compressed --retry 3 -o "$js" "$main_js_url"
-  printf '%s\n' "$js"
+  printf '%s\n' "$html"
 }
 
-resolve_download_from_bundle() {
-  local js="$1"
+resolve_download() {
+  local html_file="$1"
   local product="$2"
-  python3 - "$js" "$AG_PLATFORM" "$product" <<'PY'
-import html, re, sys
+  python3 - "$html_file" "$AG_PLATFORM" "$product" "$DOWNLOAD_PAGE" <<'PY'
+import html, re, subprocess, sys
 from pathlib import Path
-from urllib.parse import unquote
-bundle = html.unescape(Path(sys.argv[1]).read_text(errors='replace'))
+from urllib.parse import unquote, urljoin
+
+html_file = sys.argv[1]
 platform = sys.argv[2]
 product = sys.argv[3]
+page_url = sys.argv[4]
 
-# Normalize escaped slashes sometimes found in JS string literals.
-text = bundle.replace('\\/', '/')
+page_text = Path(html_file).read_text(errors='replace')
 
 def fail(msg):
     raise SystemExit(msg)
@@ -174,40 +157,91 @@ def version_from_url(url):
     return 'unknown'
 
 if product == 'desktop':
-    marker = 'id:"antigravity-2"'
-    next_marker = 'id:"antigravity-cli"'
+    markers = [
+        r'id=[\'"]antigravity-2[\'"]',
+        r'id:\s*[\'"]antigravity-2[\'"]',
+        r'<h[1-4][^>]*>[^<]*Antigravity\s+2(?:\.0)?[^<]*</h[1-4]>'
+    ]
+    next_markers = [
+        r'id=[\'"]antigravity-cli[\'"]',
+        r'id:\s*[\'"]antigravity-cli[\'"]',
+        r'<h[1-4][^>]*>[^<]*Antigravity\s+CLI[^<]*</h[1-4]>'
+    ]
     filename_patterns = [r'Antigravity\.tar\.gz']
     label = 'Antigravity 2.0'
 elif product == 'ide':
-    marker = 'id:"antigravity-ide"'
-    next_marker = 'id:"antigravity-sdk"'
-    filename_patterns = [r'Antigravity%20IDE\.tar\.gz', r'Antigravity\+IDE\.tar\.gz', r'Antigravity IDE\.tar\.gz']
+    markers = [
+        r'id=[\'"]antigravity-ide[\'"]',
+        r'id:\s*[\'"]antigravity-ide[\'"]',
+        r'<h[1-4][^>]*>[^<]*Antigravity\s+IDE[^<]*</h[1-4]>'
+    ]
+    next_markers = [
+        r'id=[\'"]antigravity-sdk[\'"]',
+        r'id:\s*[\'"]antigravity-sdk[\'"]',
+        r'<h[1-4][^>]*>[^<]*Antigravity\s+SDK[^<]*</h[1-4]>'
+    ]
+    filename_patterns = [r'Antigravity(?:%20|\+| )IDE\.tar\.gz']
     label = 'Antigravity IDE'
 else:
     fail(f'Unknown product: {product}')
 
-sections = []
-start = text.find(marker)
-if start != -1:
-    end = text.find(next_marker, start)
-    sections.append(text[start:end if end != -1 else None])
-sections.append(text)
+def search_text(raw_text):
+    text = html.unescape(raw_text).replace('\\/', '/')
+    sections = []
+    start_pos = -1
+    for m in markers:
+        match = re.search(m, text, re.IGNORECASE)
+        if match:
+            start_pos = match.start()
+            break
 
-for section in sections:
-    for filename_re in filename_patterns:
-        pattern = r'https?://[^"\'\s<>)]*/' + re.escape(platform) + r'/' + filename_re
-        matches = re.findall(pattern, section)
-        if matches:
-            url = matches[-1]
-            print(version_from_url(url), url)
-            sys.exit(0)
+    if start_pos != -1:
+        end_pos = -1
+        for nm in next_markers:
+            match = re.search(nm, text[start_pos:], re.IGNORECASE)
+            if match:
+                end_pos = start_pos + match.start()
+                break
+        sections.append(text[start_pos:end_pos if end_pos != -1 else None])
 
-fail(f'Could not find official {label} tarball for {platform} in Google download bundle')
+    sections.append(text)
+
+    for section in sections:
+        for filename_re in filename_patterns:
+            pattern = r'https?://[^"\'\s<>)]*/' + re.escape(platform) + r'/' + filename_re
+            matches = re.findall(pattern, section)
+            if matches:
+                return matches[0]
+    return None
+
+# 1. Search directly in page HTML
+found_url = search_text(page_text)
+if found_url:
+    print(version_from_url(found_url), found_url)
+    sys.exit(0)
+
+# 2. Fallback: Search script bundles referenced in the HTML
+script_srcs = re.findall(r'<script[^>]+src=[\'"]([^\'"]+\.js(?:\?[^\'"]*)?)[\'"]', page_text, re.IGNORECASE)
+for src in script_srcs:
+    full_js_url = urljoin(page_url, src)
+    try:
+        cmd = ['curl', '-fsSL', '--compressed', '--retry', '2', full_js_url]
+        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=15)
+        if res.returncode == 0:
+            js_text = res.stdout.decode('utf-8', errors='replace')
+            found_url = search_text(js_text)
+            if found_url:
+                print(version_from_url(found_url), found_url)
+                sys.exit(0)
+    except Exception:
+        pass
+
+fail(f'Could not find official {label} tarball for {platform} on official Antigravity download page')
 PY
 }
 
-resolve_desktop_download() { resolve_download_from_bundle "$1" desktop; }
-resolve_ide_download() { resolve_download_from_bundle "$1" ide; }
+resolve_desktop_download() { resolve_download "$1" desktop; }
+resolve_ide_download() { resolve_download "$1" ide; }
 
 asar_extract_icon_png() {
   local asar="$1"
@@ -266,9 +300,9 @@ installed_version() {
 
 install_desktop_app() {
   local tmpdir="$1"
-  local js="$2"
+  local page_file="$2"
   local version url
-  read -r version url < <(resolve_desktop_download "$js")
+  read -r version url < <(resolve_desktop_download "$page_file")
   local root="/opt/antigravity"
   local target="$root/$DESKTOP_TOP/antigravity"
   local version_file="$root/.antigravity-linux-version"
@@ -323,9 +357,9 @@ DESKTOP
 
 install_ide_app() {
   local tmpdir="$1"
-  local js="$2"
+  local page_file="$2"
   local version url
-  read -r version url < <(resolve_ide_download "$js")
+  read -r version url < <(resolve_ide_download "$page_file")
   local root="/opt/antigravity-ide"
   local install_dir="Antigravity-IDE"
   local version_file="$root/.antigravity-linux-version"
@@ -492,16 +526,16 @@ print_downloads() {
   local tmp_parent="${TMPDIR:-/tmp}"
   local tmpdir
   tmpdir=$(mktemp -d "$tmp_parent/$PROJECT_NAME.XXXXXX")
-  local js
-  js=$(resolve_main_bundle "$tmpdir")
+  local page_file
+  page_file=$(fetch_download_page "$tmpdir")
   if [ "$INSTALL_DESKTOP" -eq 1 ]; then
     local version url
-    read -r version url < <(resolve_desktop_download "$js")
+    read -r version url < <(resolve_desktop_download "$page_file")
     log "Antigravity 2.0 $version: $url"
   fi
   if [ "$INSTALL_IDE" -eq 1 ]; then
     local version url
-    read -r version url < <(resolve_ide_download "$js")
+    read -r version url < <(resolve_ide_download "$page_file")
     log "Antigravity IDE $version: $url"
   fi
   rm -rf "$tmpdir"
@@ -565,10 +599,10 @@ main() {
   local tmpdir
   tmpdir=$(mktemp -d "$tmp_parent/$PROJECT_NAME.XXXXXX")
   trap 'rm -rf "$tmpdir"' EXIT
-  local js
-  js=$(resolve_main_bundle "$tmpdir")
-  [ "$INSTALL_DESKTOP" -eq 1 ] && install_desktop_app "$tmpdir" "$js"
-  [ "$INSTALL_IDE" -eq 1 ] && install_ide_app "$tmpdir" "$js"
+  local page_file
+  page_file=$(fetch_download_page "$tmpdir")
+  [ "$INSTALL_DESKTOP" -eq 1 ] && install_desktop_app "$tmpdir" "$page_file"
+  [ "$INSTALL_IDE" -eq 1 ] && install_ide_app "$tmpdir" "$page_file"
   install_nautilus_extension
   if [ "$INSTALL_CLI" -eq 1 ]; then
     log "Running Google's official Antigravity CLI installer for the non-root user..."
