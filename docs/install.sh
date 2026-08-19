@@ -20,6 +20,7 @@ DO_PRINT_DOWNLOADS=0
 DO_CHECK_UPDATE=0
 CLEAN_LEGACY=0
 PRODUCT_FILTER_SET=0
+EXPLICIT_INSTALL=0
 FORCE=0
 YES=0
 INSTALLER_URL="${ANTIGRAVITY_LINUX_INSTALLER_URL:-$DEFAULT_INSTALLER_URL}"
@@ -84,6 +85,7 @@ ${BOLD}Usage:${RESET}
   install.sh [install|update] [options]
   install.sh --status
   install.sh --check-update
+  install.sh --clean-legacy
   install.sh --print-downloads
   install.sh --uninstall
 
@@ -117,13 +119,13 @@ USAGE
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    install|update) ;;
+    install|update) EXPLICIT_INSTALL=1 ;;
     check-update|--check-update) DO_CHECK_UPDATE=1 ;;
-    --desktop) INSTALL_DESKTOP=1; INSTALL_IDE=0; PRODUCT_FILTER_SET=1 ;;
-    --ide) INSTALL_DESKTOP=0; INSTALL_IDE=1; PRODUCT_FILTER_SET=1 ;;
-    --all) INSTALL_DESKTOP=1; INSTALL_IDE=1; PRODUCT_FILTER_SET=1 ;;
-    --cli) INSTALL_CLI=1; PRODUCT_FILTER_SET=1 ;;
-    --clean-legacy) CLEAN_LEGACY=1 ;;
+    --desktop) INSTALL_DESKTOP=1; INSTALL_IDE=0; PRODUCT_FILTER_SET=1; EXPLICIT_INSTALL=1 ;;
+    --ide) INSTALL_DESKTOP=0; INSTALL_IDE=1; PRODUCT_FILTER_SET=1; EXPLICIT_INSTALL=1 ;;
+    --all) INSTALL_DESKTOP=1; INSTALL_IDE=1; PRODUCT_FILTER_SET=1; EXPLICIT_INSTALL=1 ;;
+    --cli) INSTALL_CLI=1; PRODUCT_FILTER_SET=1; EXPLICIT_INSTALL=1 ;;
+    clean-legacy|--clean-legacy) CLEAN_LEGACY=1 ;;
     --no-nautilus) INSTALL_NAUTILUS=0 ;;
     --no-apt) INSTALL_DEPS=0 ;;
     --force) FORCE=1 ;;
@@ -554,6 +556,13 @@ case "\${1:-}" in
   --status|--print-downloads|--check-update|check-update|status|-h|--help)
     curl -fsSL "\$SCRIPT_URL" | bash -s -- "\$@"
     ;;
+  clean-legacy|--clean-legacy)
+    if [ "\$(id -u)" -eq 0 ]; then
+      curl -fsSL "\$SCRIPT_URL" | bash -s -- "\$@"
+    else
+      curl -fsSL "\$SCRIPT_URL" | sudo bash -s -- "\$@"
+    fi
+    ;;
   *)
     if [ "\$(id -u)" -eq 0 ]; then
       curl -fsSL "\$SCRIPT_URL" | bash -s -- "\$@"
@@ -841,6 +850,12 @@ main() {
   fi
   if [ "$DO_UNINSTALL" -eq 1 ]; then
     uninstall_all
+    exit 0
+  fi
+  if [ "$CLEAN_LEGACY" -eq 1 ] && [ "$EXPLICIT_INSTALL" -eq 0 ]; then
+    require_root_or_reexec
+    print_banner
+    clean_legacy_installation
     exit 0
   fi
 
