@@ -20,45 +20,92 @@ FORCE=0
 YES=0
 INSTALLER_URL="${ANTIGRAVITY_LINUX_INSTALLER_URL:-}"
 
+# Terminal color and typography setup (respects NO_COLOR and non-interactive ttys)
+if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
+  BOLD=$'\033[1m'
+  DIM=$'\033[2m'
+  RESET=$'\033[0m'
+  TEAL=$'\033[38;5;37m'
+  CYAN=$'\033[38;5;45m'
+  GREEN=$'\033[38;5;71m'
+  YELLOW=$'\033[38;5;214m'
+  RED=$'\033[38;5;203m'
+  GRAY=$'\033[38;5;244m'
+else
+  BOLD=""
+  DIM=""
+  RESET=""
+  TEAL=""
+  CYAN=""
+  GREEN=""
+  YELLOW=""
+  RED=""
+  GRAY=""
+fi
+
 log() { printf '%s\n' "$*"; }
-warn() { printf 'WARN: %s\n' "$*" >&2; }
-err() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
+log_step() { printf '\n%b\n' "${TEAL}${BOLD}──➤ $*${RESET}"; }
+log_info() { printf '%b\n' "${CYAN}  ●${RESET} $*"; }
+log_success() { printf '%b\n' "${GREEN}  ✔${RESET} ${BOLD}$*${RESET}"; }
+log_item() { printf '%b\n' "${GRAY}    •${RESET} $*"; }
+warn() { printf '%b\n' "${YELLOW}  ▲ WARN:${RESET} $*" >&2; }
+err() { printf '%b\n' "${RED}  ✖ ERROR:${RESET} $*" >&2; exit 1; }
 need() { command -v "$1" >/dev/null 2>&1 || err "Required command not found: $1"; }
 
-usage() {
-  cat <<'USAGE'
-Antigravity Linux Installer
+if [ "$(uname -s)" != "Linux" ]; then
+  err "This installer is for Linux only."
+fi
 
-Usage:
+case "$(uname -m)" in
+  x86_64|amd64) AG_PLATFORM="linux-x64"; DESKTOP_TOP="Antigravity-x64" ;;
+  aarch64|arm64) AG_PLATFORM="linux-arm"; DESKTOP_TOP="Antigravity-arm64" ;;
+  *) err "Unsupported CPU architecture: $(uname -m). Google currently provides x64 and ARM64 Linux builds." ;;
+esac
+
+print_banner() {
+  cat <<BANNER
+${TEAL}╭──────────────────────────────────────────────────────────╮
+│ ${BOLD}Antigravity Linux Installer${RESET}${TEAL}                              │
+│ ${DIM}Google Antigravity 2.0 & IDE Setup (${AG_PLATFORM})${RESET}${TEAL}           │
+╰──────────────────────────────────────────────────────────╯${RESET}
+BANNER
+}
+
+usage() {
+  cat <<USAGE
+${TEAL}${BOLD}Antigravity Linux Installer${RESET}
+${DIM}Installs and manages Google Antigravity 2.0 and Antigravity IDE on Linux.${RESET}
+
+${BOLD}Usage:${RESET}
   install.sh [install|update] [options]
   install.sh --status
   install.sh --print-downloads
   install.sh --uninstall
 
-Default:
+${BOLD}Default:${RESET}
   Installs or updates Antigravity 2.0 desktop app system-wide.
 
-Options:
-  --desktop              Install/update Antigravity 2.0 desktop app only (default)
-  --ide                  Install/update Antigravity IDE only
-  --all                  Install/update Antigravity 2.0 desktop app + Antigravity IDE
-  --cli                  Also run Google's official Antigravity CLI installer
-  --no-nautilus          Skip GNOME Files/Nautilus context-menu helper
-  --no-apt               Do not install apt dependencies automatically
-  --force                Reinstall even when the recorded version matches
-  --install-url URL      Store URL used by the antigravity-linux update command
-  --status               Show installed helper-managed apps and versions
-  --print-downloads      Print the resolved official Google tarball URLs
-  --uninstall            Remove helper-managed Antigravity desktop/IDE files
-  -y, --yes              Non-interactive; assume yes where possible
-  -h, --help             Show this help
+${BOLD}Options:${RESET}
+  ${CYAN}--desktop${RESET}              Install/update Antigravity 2.0 desktop app only (default)
+  ${CYAN}--ide${RESET}                  Install/update Antigravity IDE only
+  ${CYAN}--all${RESET}                  Install/update Antigravity 2.0 desktop app + Antigravity IDE
+  ${CYAN}--cli${RESET}                  Also run Google's official Antigravity CLI installer
+  ${CYAN}--no-nautilus${RESET}          Skip GNOME Files/Nautilus context-menu helper
+  ${CYAN}--no-apt${RESET}               Do not install apt dependencies automatically
+  ${CYAN}--force${RESET}                Reinstall even when the recorded version matches
+  ${CYAN}--install-url URL${RESET}      Store URL used by the antigravity-linux update command
+  ${CYAN}--status${RESET}               Show installed helper-managed apps and versions
+  ${CYAN}--print-downloads${RESET}      Print the resolved official Google tarball URLs
+  ${CYAN}--uninstall${RESET}            Remove helper-managed Antigravity desktop/IDE files
+  ${CYAN}-y, --yes${RESET}              Non-interactive; assume yes where possible
+  ${CYAN}-h, --help${RESET}             Show this help
 
-Recommended GitHub Pages one-liner:
-  INSTALLER_URL="https://YOUR_GITHUB_USERNAME.github.io/antigravity-linux/install.sh"; \
-  curl -fsSL "$INSTALLER_URL" | sudo -E env ANTIGRAVITY_LINUX_INSTALLER_URL="$INSTALLER_URL" bash -s -- --all
+${BOLD}Recommended GitHub Pages one-liner:${RESET}
+  ${DIM}INSTALLER_URL="https://YOUR_GITHUB_USERNAME.github.io/antigravity-linux/install.sh"; \\${RESET}
+  ${DIM}curl -fsSL "\$INSTALLER_URL" | sudo -E env ANTIGRAVITY_LINUX_INSTALLER_URL="\$INSTALLER_URL" bash -s -- --all${RESET}
 
-Update after install:
-  sudo antigravity-linux update --all
+${BOLD}Update after install:${RESET}
+  ${DIM}sudo antigravity-linux update --all${RESET}
 USAGE
 }
 
@@ -87,16 +134,6 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-if [ "$(uname -s)" != "Linux" ]; then
-  err "This installer is for Linux only."
-fi
-
-case "$(uname -m)" in
-  x86_64|amd64) AG_PLATFORM="linux-x64"; DESKTOP_TOP="Antigravity-x64" ;;
-  aarch64|arm64) AG_PLATFORM="linux-arm"; DESKTOP_TOP="Antigravity-arm64" ;;
-  *) err "Unsupported CPU architecture: $(uname -m). Google currently provides x64 and ARM64 Linux builds." ;;
-esac
-
 require_root_or_reexec() {
   if [ "$(id -u)" -eq 0 ]; then
     return 0
@@ -107,16 +144,27 @@ require_root_or_reexec() {
   err "System-wide install needs root. Use: curl -fsSL <installer-url> | sudo -E env ANTIGRAVITY_LINUX_INSTALLER_URL=<installer-url> bash"
 }
 
+download_file() {
+  local url="$1"
+  local dest="$2"
+  if [ -t 1 ]; then
+    curl -# -fSL --retry 3 -o "$dest" "$url"
+  else
+    curl -fsSL --retry 3 -o "$dest" "$url"
+  fi
+}
+
 install_deps_debian() {
   [ "$INSTALL_DEPS" -eq 1 ] || return 0
   if command -v apt-get >/dev/null 2>&1; then
+    log_info "Updating system packages and verifying dependencies..."
     export DEBIAN_FRONTEND=noninteractive
-    apt-get update
+    apt-get update -qq
     local packages=(ca-certificates curl tar python3 desktop-file-utils xdg-utils)
     if [ "$INSTALL_NAUTILUS" -eq 1 ] && [ "$INSTALL_IDE" -eq 1 ]; then
       packages+=(python3-nautilus)
     fi
-    apt-get install -y "${packages[@]}"
+    apt-get install -y -qq "${packages[@]}" >/dev/null
   else
     for c in curl tar python3; do need "$c"; done
   fi
@@ -307,13 +355,16 @@ install_desktop_app() {
   local target="$root/$DESKTOP_TOP/antigravity"
   local version_file="$root/.antigravity-linux-version"
   if [ "$FORCE" -eq 0 ] && [ -x "$target" ] && [ "$(installed_version "$version_file")" = "$version" ]; then
-    log "Antigravity 2.0 $version is already installed."
+    log_info "Antigravity 2.0 v$version is already up to date."
     return
   fi
 
-  log "Downloading Antigravity 2.0 $version for $AG_PLATFORM from Google..."
+  log_step "Installing Antigravity 2.0 (v$version for $AG_PLATFORM)"
+  log_info "Downloading official tarball from Google..."
   local archive="$tmpdir/Antigravity.tar.gz"
-  curl -fsSL --retry 3 -o "$archive" "$url"
+  download_file "$url" "$archive"
+  
+  log_info "Extracting and validating archive..."
   tar -tzf "$archive" > "$tmpdir/desktop-list.txt"
   local top_dir
   top_dir=$(sed -n '1{s#/.*##;p;q}' "$tmpdir/desktop-list.txt")
@@ -334,6 +385,7 @@ install_desktop_app() {
   fix_chrome_sandbox "${root}.new/$top_dir/chrome-sandbox"
   safe_replace_dir "${root}.new" "$root"
 
+  log_info "Configuring desktop integration and launcher symlinks..."
   ln -sfn "$root/$top_dir/antigravity" /usr/local/bin/antigravity
   mkdir -p /usr/share/icons/hicolor/512x512/apps /usr/share/applications
   if [ -f "$icon_staged" ]; then
@@ -352,7 +404,7 @@ StartupNotify=true
 StartupWMClass=Antigravity
 DESKTOP
   refresh_desktop_caches
-  log "Installed Antigravity 2.0 $version at $root/$top_dir"
+  log_success "Installed Antigravity 2.0 v$version at $root/$top_dir"
 }
 
 install_ide_app() {
@@ -364,13 +416,16 @@ install_ide_app() {
   local install_dir="Antigravity-IDE"
   local version_file="$root/.antigravity-linux-version"
   if [ "$FORCE" -eq 0 ] && [ -x "$root/$install_dir/antigravity-ide" ] && [ "$(installed_version "$version_file")" = "$version" ]; then
-    log "Antigravity IDE $version is already installed."
+    log_info "Antigravity IDE v$version is already up to date."
     return
   fi
 
-  log "Downloading Antigravity IDE $version for $AG_PLATFORM from Google..."
+  log_step "Installing Antigravity IDE (v$version for $AG_PLATFORM)"
+  log_info "Downloading official tarball from Google..."
   local archive="$tmpdir/Antigravity-IDE.tar.gz"
-  curl -fsSL --retry 3 -o "$archive" "$url"
+  download_file "$url" "$archive"
+
+  log_info "Extracting and validating archive..."
   tar -tzf "$archive" > "$tmpdir/ide-list.txt"
   local top_dir
   top_dir=$(sed -n '1{s#/.*##;p;q}' "$tmpdir/ide-list.txt")
@@ -386,6 +441,7 @@ install_ide_app() {
   fix_chrome_sandbox "${root}.new/$install_dir/chrome-sandbox"
   safe_replace_dir "${root}.new" "$root"
 
+  log_info "Configuring desktop integration and launcher symlinks..."
   ln -sfn "$root/$install_dir/antigravity-ide" /usr/local/bin/antigravity-ide
   mkdir -p /usr/share/icons/hicolor/512x512/apps /usr/share/applications
   local icon_source="$root/$install_dir/resources/app/resources/linux/code.png"
@@ -406,7 +462,7 @@ StartupNotify=true
 StartupWMClass=antigravity-ide
 DESKTOP
   refresh_desktop_caches
-  log "Installed Antigravity IDE $version at $root/$install_dir"
+  log_success "Installed Antigravity IDE v$version at $root/$install_dir"
 }
 
 install_nautilus_extension() {
@@ -466,7 +522,7 @@ class OpenInAntigravityIDE(GObject.GObject, Nautilus.MenuProvider):
         item.connect('activate', lambda _item: subprocess.Popen(['antigravity-ide', path]))
         return [item]
 PY
-  log "Installed Nautilus context-menu helper. Restart Files/Nautilus to see it."
+  log_info "Installed GNOME Files/Nautilus context menu helper."
 }
 
 install_manager_command() {
@@ -500,24 +556,38 @@ SH
 }
 
 print_status() {
-  log "Antigravity Linux status"
+  print_banner
+  printf '\n%b\n' "${TEAL}${BOLD}──➤ Installation Status${RESET}"
+
   if [ -x /usr/local/bin/antigravity ]; then
-    log "- Antigravity 2.0: installed ($(installed_version /opt/antigravity/.antigravity-linux-version))"
-    log "  Command: /usr/local/bin/antigravity"
+    local v
+    v="$(installed_version /opt/antigravity/.antigravity-linux-version)"
+    [ -n "$v" ] && v="v$v" || v="installed"
+    printf '%b\n' "${CYAN}  ●${RESET} ${BOLD}Antigravity 2.0:${RESET} ${GREEN}installed${RESET} ${DIM}($v)${RESET}"
+    printf '%b\n' "${GRAY}    • Launcher:${RESET} /usr/local/bin/antigravity"
+    printf '%b\n' "${GRAY}    • Location:${RESET} /opt/antigravity"
   else
-    log "- Antigravity 2.0: not installed by this helper"
+    printf '%b\n' "${CYAN}  ●${RESET} ${BOLD}Antigravity 2.0:${RESET} ${GRAY}not installed${RESET}"
   fi
+
   if [ -x /usr/local/bin/antigravity-ide ]; then
-    log "- Antigravity IDE: installed ($(installed_version /opt/antigravity-ide/.antigravity-linux-version))"
-    log "  Command: /usr/local/bin/antigravity-ide"
+    local v
+    v="$(installed_version /opt/antigravity-ide/.antigravity-linux-version)"
+    [ -n "$v" ] && v="v$v" || v="installed"
+    printf '%b\n' "${CYAN}  ●${RESET} ${BOLD}Antigravity IDE:${RESET} ${GREEN}installed${RESET} ${DIM}($v)${RESET}"
+    printf '%b\n' "${GRAY}    • Launcher:${RESET} /usr/local/bin/antigravity-ide"
+    printf '%b\n' "${GRAY}    • Location:${RESET} /opt/antigravity-ide"
   else
-    log "- Antigravity IDE: not installed by this helper"
+    printf '%b\n' "${CYAN}  ●${RESET} ${BOLD}Antigravity IDE:${RESET} ${GRAY}not installed${RESET}"
   fi
+
   if [ -x /usr/local/bin/antigravity-linux ]; then
-    log "- Update helper: installed"
+    printf '%b\n' "${CYAN}  ●${RESET} ${BOLD}Update Helper:${RESET}   ${GREEN}installed${RESET}"
+    printf '%b\n' "${GRAY}    • Command:${RESET}  /usr/local/bin/antigravity-linux"
   else
-    log "- Update helper: not installed"
+    printf '%b\n' "${CYAN}  ●${RESET} ${BOLD}Update Helper:${RESET}   ${GRAY}not installed${RESET}"
   fi
+  printf '\n'
 }
 
 print_downloads() {
@@ -528,54 +598,63 @@ print_downloads() {
   tmpdir=$(mktemp -d "$tmp_parent/$PROJECT_NAME.XXXXXX")
   local page_file
   page_file=$(fetch_download_page "$tmpdir")
+  print_banner
+  printf '\n%b\n' "${TEAL}${BOLD}──➤ Resolved Official Downloads (${AG_PLATFORM})${RESET}"
   if [ "$INSTALL_DESKTOP" -eq 1 ]; then
     local version url
     read -r version url < <(resolve_desktop_download "$page_file")
-    log "Antigravity 2.0 $version: $url"
+    printf '%b\n' "${CYAN}  ●${RESET} ${BOLD}Antigravity 2.0${RESET} ${DIM}(v$version)${RESET}"
+    printf '%b\n' "${GRAY}    URL:${RESET} $url"
   fi
   if [ "$INSTALL_IDE" -eq 1 ]; then
     local version url
     read -r version url < <(resolve_ide_download "$page_file")
-    log "Antigravity IDE $version: $url"
+    printf '%b\n' "${CYAN}  ●${RESET} ${BOLD}Antigravity IDE${RESET} ${DIM}(v$version)${RESET}"
+    printf '%b\n' "${GRAY}    URL:${RESET} $url"
   fi
+  printf '\n'
   rm -rf "$tmpdir"
 }
 
 print_success_summary() {
-  log ""
-  log "Antigravity Linux install complete."
-  log ""
-  log "Installed:"
-  if [ "$INSTALL_DESKTOP" -eq 1 ]; then
-    log "- Antigravity 2.0: /usr/local/bin/antigravity"
-  fi
-  if [ "$INSTALL_IDE" -eq 1 ]; then
-    log "- Antigravity IDE: /usr/local/bin/antigravity-ide"
-  fi
-  log ""
-  log "Manage:"
-  log "- Status:    antigravity-linux --status"
-  log "- Update:    sudo antigravity-linux update --all"
-  log "- Uninstall: sudo antigravity-linux --uninstall"
+  cat <<SUMMARY
+
+${GREEN}╭──────────────────────────────────────────────────────────╮
+│ ${BOLD}✔ Antigravity Linux Setup Complete${RESET}${GREEN}                       │
+├──────────────────────────────────────────────────────────┤${RESET}
+${BOLD}  Installed Launchers:${RESET}
+$( [ "$INSTALL_DESKTOP" -eq 1 ] && printf '%b\n' "${GRAY}    • Antigravity 2.0 :${RESET} /usr/local/bin/antigravity" )
+$( [ "$INSTALL_IDE" -eq 1 ] && printf '%b\n' "${GRAY}    • Antigravity IDE :${RESET} /usr/local/bin/antigravity-ide" )
+
+${BOLD}  Management Commands:${RESET}
+${GRAY}    • Status          :${RESET} ${CYAN}antigravity-linux --status${RESET}
+${GRAY}    • Update All      :${RESET} ${CYAN}sudo antigravity-linux update --all${RESET}
+${GRAY}    • Uninstall       :${RESET} ${CYAN}sudo antigravity-linux --uninstall${RESET}
+${GREEN}╰──────────────────────────────────────────────────────────╯${RESET}
+SUMMARY
+
   if [ -z "$INSTALLER_URL" ]; then
-    log ""
-    log "Note: antigravity-linux was installed without a stored URL. Re-run this local script for updates or reinstall from a published URL."
+    printf '%b\n' "${YELLOW}  Note:${RESET} ${DIM}Installed without a stored URL. Run this script locally for updates.${RESET}"
   fi
   if [ "$INSTALL_IDE" -eq 1 ]; then
-    log ""
-    log "Folder open integration: use your file manager's Open With menu, or Nautilus context menu after restarting Files."
+    printf '%b\n' "${GRAY}  • File Manager:${RESET} ${DIM}Use 'Open With' or Nautilus right-click after restarting Files.${RESET}"
   fi
+  printf '\n'
 }
 
 uninstall_all() {
   require_root_or_reexec
+  print_banner
+  log_step "Uninstalling Antigravity Linux"
+  log_info "Removing installation directories and binaries..."
   rm -rf /opt/antigravity /opt/antigravity.new /opt/antigravity.previous /opt/antigravity-ide /opt/antigravity-ide.new /opt/antigravity-ide.previous
   rm -f /usr/local/bin/antigravity /usr/local/bin/antigravity-ide /usr/local/bin/update-antigravity /usr/local/bin/update-antigravity-ide /usr/local/bin/antigravity-linux
   rm -f /usr/share/applications/antigravity.desktop /usr/share/applications/antigravity-ide.desktop
   rm -f /usr/share/icons/hicolor/512x512/apps/antigravity.png /usr/share/icons/hicolor/512x512/apps/antigravity-ide.png
   rm -f /usr/share/nautilus-python/extensions/open-in-antigravity-ide.py
   refresh_desktop_caches
-  log "Removed helper-managed Antigravity files. User settings under home directories were left untouched."
+  log_success "Removed helper-managed Antigravity files."
+  printf '%b\n' "${DIM}  User settings under home directories were left untouched.${RESET}\n"
 }
 
 main() {
@@ -593,27 +672,34 @@ main() {
   fi
 
   require_root_or_reexec
+  print_banner
   install_deps_debian
   local tmp_parent="${TMPDIR:-/var/tmp}"
   mkdir -p "$tmp_parent"
   local tmpdir
   tmpdir=$(mktemp -d "$tmp_parent/$PROJECT_NAME.XXXXXX")
   trap 'rm -rf "$tmpdir"' EXIT
+  
+  log_step "Resolving official Google downloads"
   local page_file
   page_file=$(fetch_download_page "$tmpdir")
+  
   [ "$INSTALL_DESKTOP" -eq 1 ] && install_desktop_app "$tmpdir" "$page_file"
   [ "$INSTALL_IDE" -eq 1 ] && install_ide_app "$tmpdir" "$page_file"
   install_nautilus_extension
+  
   if [ "$INSTALL_CLI" -eq 1 ]; then
-    log "Running Google's official Antigravity CLI installer for the non-root user..."
+    log_step "Installing official Antigravity CLI"
     if [ -n "${SUDO_USER:-}" ] && [ "${SUDO_USER:-}" != "root" ]; then
       sudo -u "$SUDO_USER" -H bash -lc "curl -fsSL '$CLI_INSTALLER' | bash"
     else
       curl -fsSL "$CLI_INSTALLER" | bash
     fi
   fi
+  
   install_manager_command
   print_success_summary
 }
 
 main "$@"
+

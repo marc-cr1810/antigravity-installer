@@ -4,6 +4,7 @@
 
 - Fix download URL resolution after upstream Antigravity download page transitioned to Astro/server-rendered HTML.
 - Add support for direct HTML parsing with script bundle fallback.
+- Modernize terminal user interface with ANSI typography, styled cards, banners, step indicators, and progress bars.
 - Add `--all --print-downloads` check in CI test suite.
 
 ## 0.1.0 - Initial public project
