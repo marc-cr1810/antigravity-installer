@@ -107,7 +107,7 @@ ${BOLD}Options:${RESET}
   ${CYAN}-h, --help${RESET}             Show this help
 
 ${BOLD}Recommended GitHub Pages one-liner:${RESET}
-  ${DIM}INSTALLER_URL="https://YOUR_GITHUB_USERNAME.github.io/antigravity-linux/install.sh"; \\${RESET}
+  ${DIM}INSTALLER_URL="https://marc-cr1810.github.io/antigravity-installer/install.sh"; \\${RESET}
   ${DIM}curl -fsSL "\$INSTALLER_URL" | sudo -E env ANTIGRAVITY_LINUX_INSTALLER_URL="\$INSTALLER_URL" bash -s -- --all${RESET}
 
 ${BOLD}Update after install:${RESET}
@@ -535,6 +535,21 @@ PY
 
 install_manager_command() {
   local installer_url="$INSTALLER_URL"
+  if [ -z "$installer_url" ]; then
+    if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+      local origin_url
+      origin_url="$(git config --get remote.origin.url 2>/dev/null || true)"
+      if [[ "$origin_url" =~ github\.com[:/]([^/]+)/([^/.]+)(\.git)? ]]; then
+        local gh_user="${BASH_REMATCH[1]}"
+        local gh_repo="${BASH_REMATCH[2]}"
+        installer_url="https://raw.githubusercontent.com/$gh_user/$gh_repo/main/install.sh"
+      fi
+    fi
+    if [ -z "$installer_url" ]; then
+      installer_url="https://raw.githubusercontent.com/marc-cr1810/antigravity-installer/main/install.sh"
+    fi
+  fi
+
   cat > /usr/local/bin/antigravity-linux <<SH
 #!/usr/bin/env bash
 set -euo pipefail
