@@ -17,6 +17,7 @@ DO_UNINSTALL=0
 DO_STATUS=0
 DO_PRINT_DOWNLOADS=0
 CLEAN_LEGACY=0
+PRODUCT_FILTER_SET=0
 FORCE=0
 YES=0
 INSTALLER_URL="${ANTIGRAVITY_LINUX_INSTALLER_URL:-}"
@@ -114,10 +115,10 @@ USAGE
 while [ $# -gt 0 ]; do
   case "$1" in
     install|update) ;;
-    --desktop) INSTALL_DESKTOP=1; INSTALL_IDE=0 ;;
-    --ide) INSTALL_DESKTOP=0; INSTALL_IDE=1 ;;
-    --all) INSTALL_DESKTOP=1; INSTALL_IDE=1 ;;
-    --cli) INSTALL_CLI=1 ;;
+    --desktop) INSTALL_DESKTOP=1; INSTALL_IDE=0; PRODUCT_FILTER_SET=1 ;;
+    --ide) INSTALL_DESKTOP=0; INSTALL_IDE=1; PRODUCT_FILTER_SET=1 ;;
+    --all) INSTALL_DESKTOP=1; INSTALL_IDE=1; PRODUCT_FILTER_SET=1 ;;
+    --cli) INSTALL_CLI=1; PRODUCT_FILTER_SET=1 ;;
     --clean-legacy) CLEAN_LEGACY=1 ;;
     --no-nautilus) INSTALL_NAUTILUS=0 ;;
     --no-apt) INSTALL_DEPS=0 ;;
@@ -665,17 +666,32 @@ print_downloads() {
   page_file=$(fetch_download_page "$tmpdir")
   print_banner
   printf '\n%b\n' "${TEAL}${BOLD}──➤ Resolved Official Downloads (${AG_PLATFORM})${RESET}"
-  if [ "$INSTALL_DESKTOP" -eq 1 ]; then
+
+  local show_desktop=1
+  local show_ide=1
+  local show_cli=1
+
+  if [ "$PRODUCT_FILTER_SET" -eq 1 ]; then
+    show_desktop=$INSTALL_DESKTOP
+    show_ide=$INSTALL_IDE
+    show_cli=$INSTALL_CLI
+  fi
+
+  if [ "$show_desktop" -eq 1 ]; then
     local version url
     read -r version url < <(resolve_desktop_download "$page_file")
     printf '%b\n' "${CYAN}  ●${RESET} ${BOLD}Antigravity 2.0${RESET} ${DIM}(v$version)${RESET}"
     printf '%b\n' "${GRAY}    URL:${RESET} $url"
   fi
-  if [ "$INSTALL_IDE" -eq 1 ]; then
+  if [ "$show_ide" -eq 1 ]; then
     local version url
     read -r version url < <(resolve_ide_download "$page_file")
     printf '%b\n' "${CYAN}  ●${RESET} ${BOLD}Antigravity IDE${RESET} ${DIM}(v$version)${RESET}"
     printf '%b\n' "${GRAY}    URL:${RESET} $url"
+  fi
+  if [ "$show_cli" -eq 1 ]; then
+    printf '%b\n' "${CYAN}  ●${RESET} ${BOLD}Antigravity CLI Installer${RESET}"
+    printf '%b\n' "${GRAY}    URL:${RESET} $CLI_INSTALLER"
   fi
   printf '\n'
   rm -rf "$tmpdir"
