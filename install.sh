@@ -24,6 +24,17 @@ EXPLICIT_INSTALL=0
 FORCE=0
 YES=0
 INSTALLER_URL="${ANTIGRAVITY_LINUX_INSTALLER_URL:-$DEFAULT_INSTALLER_URL}"
+CLEANUP_DIRS=()
+cleanup() {
+  if [ "${#CLEANUP_DIRS[@]}" -gt 0 ]; then
+    for dir in "${CLEANUP_DIRS[@]}"; do
+      if [ -n "$dir" ] && [ -d "$dir" ]; then
+        rm -rf "$dir"
+      fi
+    done
+  fi
+}
+trap cleanup EXIT
 
 # Terminal color and typography setup (respects NO_COLOR and non-interactive ttys)
 if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
@@ -688,6 +699,7 @@ check_updates() {
   local tmp_parent="${TMPDIR:-/tmp}"
   local tmpdir
   tmpdir=$(mktemp -d "$tmp_parent/$PROJECT_NAME.XXXXXX")
+  CLEANUP_DIRS+=("$tmpdir")
   local page_file
   page_file=$(fetch_download_page "$tmpdir")
   print_banner
@@ -750,6 +762,7 @@ print_downloads() {
   local tmp_parent="${TMPDIR:-/tmp}"
   local tmpdir
   tmpdir=$(mktemp -d "$tmp_parent/$PROJECT_NAME.XXXXXX")
+  CLEANUP_DIRS+=("$tmpdir")
   local page_file
   page_file=$(fetch_download_page "$tmpdir")
   print_banner
@@ -868,7 +881,7 @@ main() {
   mkdir -p "$tmp_parent"
   local tmpdir
   tmpdir=$(mktemp -d "$tmp_parent/$PROJECT_NAME.XXXXXX")
-  trap 'rm -rf "$tmpdir"' EXIT
+  CLEANUP_DIRS+=("$tmpdir")
   
   log_step "Resolving official Google downloads"
   local page_file

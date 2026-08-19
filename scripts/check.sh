@@ -12,6 +12,7 @@ if ! cmp -s install.sh docs/install.sh; then
   exit 1
 fi
 
+bash install.sh --help >/dev/null
 bash install.sh --status >/dev/null
 bash install.sh --check-update >/dev/null
 bash install.sh --all --print-downloads >/dev/null
