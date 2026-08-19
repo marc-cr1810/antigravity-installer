@@ -16,6 +16,7 @@ INSTALL_DEPS=1
 DO_UNINSTALL=0
 DO_STATUS=0
 DO_PRINT_DOWNLOADS=0
+CLEAN_LEGACY=0
 FORCE=0
 YES=0
 INSTALLER_URL="${ANTIGRAVITY_LINUX_INSTALLER_URL:-}"
@@ -90,6 +91,7 @@ ${BOLD}Options:${RESET}
   ${CYAN}--ide${RESET}                  Install/update Antigravity IDE only
   ${CYAN}--all${RESET}                  Install/update Antigravity 2.0 desktop app + Antigravity IDE
   ${CYAN}--cli${RESET}                  Also run Google's official Antigravity CLI installer
+  ${CYAN}--clean-legacy${RESET}         Remove legacy Antigravity 1.x Debian package if present
   ${CYAN}--no-nautilus${RESET}          Skip GNOME Files/Nautilus context-menu helper
   ${CYAN}--no-apt${RESET}               Do not install apt dependencies automatically
   ${CYAN}--force${RESET}                Reinstall even when the recorded version matches
@@ -116,6 +118,7 @@ while [ $# -gt 0 ]; do
     --ide) INSTALL_DESKTOP=0; INSTALL_IDE=1 ;;
     --all) INSTALL_DESKTOP=1; INSTALL_IDE=1 ;;
     --cli) INSTALL_CLI=1 ;;
+    --clean-legacy) CLEAN_LEGACY=1 ;;
     --no-nautilus) INSTALL_NAUTILUS=0 ;;
     --no-apt) INSTALL_DEPS=0 ;;
     --force) FORCE=1 ;;
@@ -555,6 +558,61 @@ SH
   chmod +x /usr/local/bin/update-antigravity-ide
 }
 
+has_legacy_deb_package() {
+  if command -v dpkg-query >/dev/null 2>&1; then
+    dpkg-query -W -f='${Status}' antigravity 2>/dev/null | grep -q "ok installed" && return 0
+  elif command -v dpkg >/dev/null 2>&1; then
+    dpkg -s antigravity 2>/dev/null | grep -q "Status: install ok installed" && return 0
+  fi
+  [ -d /usr/share/antigravity ] && return 0
+  return 1
+}
+
+get_legacy_deb_version() {
+  local ver=""
+  if command -v dpkg-query >/dev/null 2>&1; then
+    ver="$(dpkg-query -W -f='${Version}' antigravity 2>/dev/null || true)"
+  fi
+  if [ -z "$ver" ] && [ -f /usr/share/antigravity/version ]; then
+    ver="$(cat /usr/share/antigravity/version 2>/dev/null || true)"
+  fi
+  printf '%s\n' "${ver:-unknown}"
+}
+
+clean_legacy_installation() {
+  log_step "Cleaning legacy Antigravity 1.x package"
+  if command -v apt-get >/dev/null 2>&1 && dpkg -s antigravity 2>/dev/null | grep -q "Status: install ok installed"; then
+    log_info "Removing legacy 'antigravity' Debian package via apt-get..."
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get remove -y -qq antigravity >/dev/null 2>&1 || warn "Could not remove legacy package via apt-get."
+  fi
+  rm -f /usr/share/applications/antigravity-url-handler.desktop
+  rm -rf /usr/share/antigravity
+  refresh_desktop_caches
+  log_success "Cleaned legacy Antigravity 1.x files and package entries."
+}
+
+handle_legacy_conflict() {
+  has_legacy_deb_package || return 0
+  local lv
+  lv="$(get_legacy_deb_version)"
+  if [ "$CLEAN_LEGACY" -eq 1 ]; then
+    clean_legacy_installation
+  elif [ "$YES" -eq 1 ]; then
+    log_info "Legacy Antigravity 1.x package (v$lv) detected. Pass --clean-legacy to remove."
+  elif [ -t 0 ]; then
+    printf '\n%b\n' "${YELLOW}  ▲ Legacy Antigravity 1.x package detected (${DIM}v$lv at /usr/share/antigravity${RESET}${YELLOW}).${RESET}"
+    read -r -p "    Remove legacy 1.x package to prevent duplicate app entries? [y/N] " answer
+    if [[ "$answer" =~ ^[Yy]$ ]]; then
+      clean_legacy_installation
+    else
+      log_info "Preserving legacy 1.x package. Launch via /usr/bin/antigravity."
+    fi
+  else
+    log_info "Legacy Antigravity 1.x package (v$lv) detected. Pass --clean-legacy to remove."
+  fi
+}
+
 print_status() {
   print_banner
   printf '\n%b\n' "${TEAL}${BOLD}──➤ Installation Status${RESET}"
@@ -586,6 +644,13 @@ print_status() {
     printf '%b\n' "${GRAY}    • Command:${RESET}  /usr/local/bin/antigravity-linux"
   else
     printf '%b\n' "${CYAN}  ●${RESET} ${BOLD}Update Helper:${RESET}   ${GRAY}not installed${RESET}"
+  fi
+
+  if has_legacy_deb_package; then
+    local lv
+    lv="$(get_legacy_deb_version)"
+    printf '\n%b\n' "${YELLOW}  ▲${RESET} ${BOLD}Legacy 1.x (.deb):${RESET} ${YELLOW}detected${RESET} ${DIM}(v$lv at /usr/share/antigravity)${RESET}"
+    printf '%b\n' "${GRAY}    • Clean Command:${RESET} ${CYAN}sudo apt remove antigravity${RESET} ${DIM}or run with --clean-legacy${RESET}"
   fi
   printf '\n'
 }
@@ -654,7 +719,18 @@ uninstall_all() {
   rm -f /usr/share/nautilus-python/extensions/open-in-antigravity-ide.py
   refresh_desktop_caches
   log_success "Removed helper-managed Antigravity files."
-  printf '%b\n' "${DIM}  User settings under home directories were left untouched.${RESET}\n"
+  printf '%b\n' "${DIM}  User settings under home directories were left untouched.${RESET}"
+
+  if has_legacy_deb_package; then
+    if [ "$CLEAN_LEGACY" -eq 1 ]; then
+      clean_legacy_installation
+    else
+      local lv
+      lv="$(get_legacy_deb_version)"
+      printf '\n%b\n' "${YELLOW}  ▲ Note: Legacy 'antigravity' 1.x package (v$lv) is still registered with APT.${RESET}"
+      printf '%b\n' "${GRAY}    To remove it completely:${RESET} ${CYAN}sudo apt remove antigravity${RESET}\n"
+    fi
+  fi
 }
 
 main() {
@@ -674,6 +750,8 @@ main() {
   require_root_or_reexec
   print_banner
   install_deps_debian
+  handle_legacy_conflict
+
   local tmp_parent="${TMPDIR:-/var/tmp}"
   mkdir -p "$tmp_parent"
   local tmpdir

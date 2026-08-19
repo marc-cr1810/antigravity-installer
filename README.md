@@ -130,6 +130,7 @@ The uninstall removes helper-managed files from `/opt`, `/usr/local/bin`, `/usr/
 --ide              Install/update Antigravity IDE only
 --all              Install/update desktop app + IDE
 --cli              Also run Google's official Antigravity CLI installer
+--clean-legacy     Remove legacy Antigravity 1.x Debian package if present
 --no-nautilus      Skip GNOME Files/Nautilus context-menu helper
 --no-apt           Do not install apt dependencies automatically
 --force            Reinstall even when the recorded version matches
