@@ -68,6 +68,29 @@ warn() { printf '%b\n' "${YELLOW}  ▲ WARN:${RESET} $*" >&2; }
 err() { printf '%b\n' "${RED}  ✖ ERROR:${RESET} $*" >&2; exit 1; }
 need() { command -v "$1" >/dev/null 2>&1 || err "Required command not found: $1"; }
 
+is_interactive() {
+  [ "$YES" -eq 0 ] || return 1
+  if [ -t 0 ]; then
+    return 0
+  fi
+  if [ -t 1 ] && [ -r /dev/tty ] && [ -w /dev/tty ]; then
+    return 0
+  fi
+  return 1
+}
+
+read_prompt() {
+  local prompt_text="$1"
+  local var_name="$2"
+  if [ -t 0 ]; then
+    read -r -p "$prompt_text" "$var_name"
+  elif [ -r /dev/tty ]; then
+    read -r -p "$prompt_text" "$var_name" </dev/tty
+  else
+    eval "$var_name=''"
+  fi
+}
+
 if [ "$(uname -s)" != "Linux" ]; then
   err "This installer is for Linux only."
 fi
@@ -564,25 +587,21 @@ install_manager_command() {
 #!/usr/bin/env bash
 set -euo pipefail
 SCRIPT_URL="$installer_url"
-case "\${1:-}" in
-  --status|--print-downloads|--check-update|check-update|status|-h|--help)
-    curl -fsSL "\$SCRIPT_URL" | bash -s -- "\$@"
-    ;;
-  clean-legacy|--clean-legacy)
-    if [ "\$(id -u)" -eq 0 ]; then
-      curl -fsSL "\$SCRIPT_URL" | bash -s -- "\$@"
-    else
-      curl -fsSL "\$SCRIPT_URL" | sudo bash -s -- "\$@"
-    fi
-    ;;
-  *)
-    if [ "\$(id -u)" -eq 0 ]; then
-      curl -fsSL "\$SCRIPT_URL" | bash -s -- "\$@"
-    else
-      curl -fsSL "\$SCRIPT_URL" | sudo bash -s -- "\$@"
-    fi
-    ;;
-esac
+TMP_SCRIPT="\$(mktemp /tmp/antigravity-installer.XXXXXX.sh)"
+trap 'rm -f "\$TMP_SCRIPT"' EXIT
+curl -fsSL "\$SCRIPT_URL" -o "\$TMP_SCRIPT"
+if [ "\$(id -u)" -eq 0 ]; then
+  bash "\$TMP_SCRIPT" "\$@"
+else
+  case "\${1:-}" in
+    --status|--print-downloads|--check-update|check-update|status|-h|--help)
+      bash "\$TMP_SCRIPT" "\$@"
+      ;;
+    *)
+      sudo bash "\$TMP_SCRIPT" "\$@"
+      ;;
+  esac
+fi
 SH
   chmod +x /usr/local/bin/antigravity-linux
   cat > /usr/local/bin/update-antigravity <<'SH'
@@ -649,9 +668,10 @@ handle_legacy_conflict() {
     clean_legacy_installation
   elif [ "$YES" -eq 1 ]; then
     log_info "Legacy Antigravity 1.x package (v$lv) detected. Pass --clean-legacy to remove."
-  elif [ -t 0 ]; then
+  elif is_interactive; then
     printf '\n%b\n' "${YELLOW}  ▲ Legacy Antigravity 1.x package detected (${DIM}v$lv at /usr/share/antigravity${RESET}${YELLOW}).${RESET}"
-    read -r -p "    Remove legacy 1.x package to prevent duplicate app entries? [y/N] " answer
+    local answer=""
+    read_prompt "    Remove legacy 1.x package to prevent duplicate app entries? [y/N] " answer
     if [[ "$answer" =~ ^[Yy]$ ]]; then
       clean_legacy_installation
     else
@@ -874,7 +894,7 @@ uninstall_selected() {
   if [ "$PRODUCT_FILTER_SET" -eq 1 ]; then
     remove_desktop=$INSTALL_DESKTOP
     remove_ide=$INSTALL_IDE
-  elif [ "$YES" -eq 0 ] && [ -t 0 ]; then
+  elif is_interactive; then
     if [ "$has_desktop" -eq 1 ] && [ "$has_ide" -eq 1 ]; then
       printf '\n%b\n' "${TEAL}${BOLD}Detected installed Antigravity components:${RESET}"
       printf '%b\n' "${CYAN}  1)${RESET} Antigravity 2.0 (Desktop app)"
@@ -883,7 +903,7 @@ uninstall_selected() {
       printf '%b\n' "${CYAN}  4)${RESET} Cancel\n"
 
       local choice=""
-      read -r -p "Select component to uninstall [1-4] (default: 3): " choice
+      read_prompt "Select component to uninstall [1-4] (default: 3): " choice
       choice="${choice:-3}"
       case "$choice" in
         1) remove_desktop=1; remove_ide=0 ;;
@@ -894,7 +914,8 @@ uninstall_selected() {
       esac
     elif [ "$has_desktop" -eq 1 ]; then
       printf '\n%b\n' "${YELLOW}  ▲ Found installed:${RESET} ${BOLD}Antigravity 2.0${RESET} (/opt/antigravity)"
-      read -r -p "    Uninstall Antigravity 2.0? [Y/n] " answer
+      local answer=""
+      read_prompt "    Uninstall Antigravity 2.0? [Y/n] " answer
       if [[ "$answer" =~ ^[Nn]$ ]]; then
         log_info "Uninstallation cancelled."
         exit 0
@@ -902,7 +923,8 @@ uninstall_selected() {
       remove_desktop=1
     elif [ "$has_ide" -eq 1 ]; then
       printf '\n%b\n' "${YELLOW}  ▲ Found installed:${RESET} ${BOLD}Antigravity IDE${RESET} (/opt/antigravity-ide)"
-      read -r -p "    Uninstall Antigravity IDE? [Y/n] " answer
+      local answer=""
+      read_prompt "    Uninstall Antigravity IDE? [Y/n] " answer
       if [[ "$answer" =~ ^[Nn]$ ]]; then
         log_info "Uninstallation cancelled."
         exit 0
@@ -947,7 +969,7 @@ prompt_interactive_install() {
   printf '%b\n' "${CYAN}  5)${RESET} Cancel\n"
 
   local choice=""
-  read -r -p "Enter selection [1-5] (default: 1): " choice
+  read_prompt "Enter selection [1-5] (default: 1): " choice
   choice="${choice:-1}"
 
   case "$choice" in
@@ -1015,7 +1037,7 @@ main() {
 
   require_root_or_reexec
   print_banner
-  if [ "$PRODUCT_FILTER_SET" -eq 0 ] && [ "$EXPLICIT_INSTALL" -eq 0 ] && [ "$YES" -eq 0 ] && [ -t 0 ]; then
+  if [ "$PRODUCT_FILTER_SET" -eq 0 ] && [ "$EXPLICIT_INSTALL" -eq 0 ] && is_interactive; then
     prompt_interactive_install
   fi
   install_deps_debian
