@@ -42,39 +42,33 @@ Do not claim absolute security guarantees such as "100% safe" for any command th
 Use this command to install both Google Antigravity 2.0 and Antigravity IDE:
 
 ```bash
-INSTALLER_URL="https://marc-cr1810.github.io/antigravity-installer/install.sh"
-curl -fsSL "$INSTALLER_URL" | sudo -E env ANTIGRAVITY_LINUX_INSTALLER_URL="$INSTALLER_URL" bash -s -- --all
+curl -fsSL https://raw.githubusercontent.com/marc-cr1810/antigravity-installer/main/install.sh | sudo bash -s -- --all
 ```
-
-This is the main single-command community solution. It stores the installer URL so the update helper can later fetch the current installer from the same published source.
 
 ## Install Variants
 
 Install only Google Antigravity 2.0 desktop app:
 
 ```bash
-INSTALLER_URL="https://marc-cr1810.github.io/antigravity-installer/install.sh"
-curl -fsSL "$INSTALLER_URL" | sudo -E env ANTIGRAVITY_LINUX_INSTALLER_URL="$INSTALLER_URL" bash -s --
+curl -fsSL https://raw.githubusercontent.com/marc-cr1810/antigravity-installer/main/install.sh | sudo bash -s -- --desktop
 ```
 
 Install only Antigravity IDE:
 
 ```bash
-INSTALLER_URL="https://marc-cr1810.github.io/antigravity-installer/install.sh"
-curl -fsSL "$INSTALLER_URL" | sudo -E env ANTIGRAVITY_LINUX_INSTALLER_URL="$INSTALLER_URL" bash -s -- --ide
+curl -fsSL https://raw.githubusercontent.com/marc-cr1810/antigravity-installer/main/install.sh | sudo bash -s -- --ide
 ```
 
-Install from raw GitHub instead of GitHub Pages:
+Install via GitHub Pages:
 
 ```bash
-INSTALLER_URL="https://raw.githubusercontent.com/marc-cr1810/antigravity-installer/main/install.sh"
-curl -fsSL "$INSTALLER_URL" | sudo -E env ANTIGRAVITY_LINUX_INSTALLER_URL="$INSTALLER_URL" bash -s -- --all
+curl -fsSL https://marc-cr1810.github.io/antigravity-installer/install.sh | sudo bash -s -- --all
 ```
 
 Inspect before running:
 
 ```bash
-curl -fsSL "https://marc-cr1810.github.io/antigravity-installer/install.sh" -o install.sh
+curl -fsSL "https://raw.githubusercontent.com/marc-cr1810/antigravity-installer/main/install.sh" -o install.sh
 less install.sh
 sudo bash install.sh --all
 ```
@@ -251,8 +245,7 @@ Use this wording when sharing the project:
 Include the command:
 
 ```bash
-INSTALLER_URL="https://marc-cr1810.github.io/antigravity-installer/install.sh"
-curl -fsSL "$INSTALLER_URL" | sudo -E env ANTIGRAVITY_LINUX_INSTALLER_URL="$INSTALLER_URL" bash -s -- --all
+curl -fsSL https://raw.githubusercontent.com/marc-cr1810/antigravity-installer/main/install.sh | sudo bash -s -- --all
 ```
 
 Details and source: https://marc-cr1810.github.io/antigravity-installer/

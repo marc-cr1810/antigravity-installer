@@ -64,38 +64,31 @@ This project does **not** mirror, modify, or redistribute Google binaries. It re
 ### 1. Install Antigravity 2.0 and Antigravity IDE (Recommended)
 
 ```bash
-INSTALLER_URL="https://marc-cr1810.github.io/antigravity-installer/install.sh"
-curl -fsSL "$INSTALLER_URL" | sudo -E env ANTIGRAVITY_LINUX_INSTALLER_URL="$INSTALLER_URL" bash -s -- --all
+curl -fsSL https://raw.githubusercontent.com/marc-cr1810/antigravity-installer/main/install.sh | sudo bash -s -- --all
 ```
 
 ### 2. Install Only Antigravity 2.0 Desktop App
 
 ```bash
-INSTALLER_URL="https://marc-cr1810.github.io/antigravity-installer/install.sh"
-curl -fsSL "$INSTALLER_URL" | sudo -E env ANTIGRAVITY_LINUX_INSTALLER_URL="$INSTALLER_URL" bash -s -- --desktop
+curl -fsSL https://raw.githubusercontent.com/marc-cr1810/antigravity-installer/main/install.sh | sudo bash -s -- --desktop
 ```
 
 ### 3. Install Only Antigravity IDE
 
 ```bash
-INSTALLER_URL="https://marc-cr1810.github.io/antigravity-installer/install.sh"
-curl -fsSL "$INSTALLER_URL" | sudo -E env ANTIGRAVITY_LINUX_INSTALLER_URL="$INSTALLER_URL" bash -s -- --ide
+curl -fsSL https://raw.githubusercontent.com/marc-cr1810/antigravity-installer/main/install.sh | sudo bash -s -- --ide
 ```
 
 ### 4. Install with Official Google CLI Tool
 
 ```bash
-INSTALLER_URL="https://marc-cr1810.github.io/antigravity-installer/install.sh"
-curl -fsSL "$INSTALLER_URL" | sudo -E env ANTIGRAVITY_LINUX_INSTALLER_URL="$INSTALLER_URL" bash -s -- --all --cli
+curl -fsSL https://raw.githubusercontent.com/marc-cr1810/antigravity-installer/main/install.sh | sudo bash -s -- --all --cli
 ```
 
-### Alternative: Raw GitHub One-Liner
-
-If GitHub Pages is unavailable or if you prefer the raw repository source:
+### Alternative: GitHub Pages One-Liner
 
 ```bash
-INSTALLER_URL="https://raw.githubusercontent.com/marc-cr1810/antigravity-installer/main/install.sh"
-curl -fsSL "$INSTALLER_URL" | sudo -E env ANTIGRAVITY_LINUX_INSTALLER_URL="$INSTALLER_URL" bash -s -- --all
+curl -fsSL https://marc-cr1810.github.io/antigravity-installer/install.sh | sudo bash -s -- --all
 ```
 
 ---
@@ -172,8 +165,7 @@ If you previously installed the older Google Antigravity 1.x Debian package (`an
 - **Automated Removal:** Pass `--clean-legacy` to remove it non-interactively:
 
 ```bash
-INSTALLER_URL="https://marc-cr1810.github.io/antigravity-installer/install.sh"
-curl -fsSL "$INSTALLER_URL" | sudo -E env ANTIGRAVITY_LINUX_INSTALLER_URL="$INSTALLER_URL" bash -s -- --all --clean-legacy -y
+curl -fsSL https://raw.githubusercontent.com/marc-cr1810/antigravity-installer/main/install.sh | sudo bash -s -- --all --clean-legacy -y
 ```
 
 ---

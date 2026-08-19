@@ -6,6 +6,7 @@ set -euo pipefail
 
 ORIGINAL_ARGS=("$@")
 PROJECT_NAME="antigravity-linux"
+DEFAULT_INSTALLER_URL="https://raw.githubusercontent.com/marc-cr1810/antigravity-installer/main/install.sh"
 DOWNLOAD_PAGE="https://antigravity.google/download"
 CLI_INSTALLER="https://antigravity.google/cli/install.sh"
 INSTALL_DESKTOP=1
@@ -21,7 +22,7 @@ CLEAN_LEGACY=0
 PRODUCT_FILTER_SET=0
 FORCE=0
 YES=0
-INSTALLER_URL="${ANTIGRAVITY_LINUX_INSTALLER_URL:-}"
+INSTALLER_URL="${ANTIGRAVITY_LINUX_INSTALLER_URL:-$DEFAULT_INSTALLER_URL}"
 
 # Terminal color and typography setup (respects NO_COLOR and non-interactive ttys)
 if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
@@ -106,9 +107,8 @@ ${BOLD}Options:${RESET}
   ${CYAN}-y, --yes${RESET}              Non-interactive; assume yes where possible
   ${CYAN}-h, --help${RESET}             Show this help
 
-${BOLD}Recommended GitHub Pages one-liner:${RESET}
-  ${DIM}INSTALLER_URL="https://marc-cr1810.github.io/antigravity-installer/install.sh"; \\${RESET}
-  ${DIM}curl -fsSL "\$INSTALLER_URL" | sudo -E env ANTIGRAVITY_LINUX_INSTALLER_URL="\$INSTALLER_URL" bash -s -- --all${RESET}
+${BOLD}Recommended one-liner:${RESET}
+  ${DIM}curl -fsSL https://raw.githubusercontent.com/marc-cr1810/antigravity-installer/main/install.sh | sudo bash -s -- --all${RESET}
 
 ${BOLD}Update after install:${RESET}
   ${DIM}sudo antigravity-linux update --all${RESET}
@@ -147,9 +147,9 @@ require_root_or_reexec() {
     return 0
   fi
   if command -v sudo >/dev/null 2>&1 && [ -n "${BASH_SOURCE[0]:-}" ] && [ -r "${BASH_SOURCE[0]}" ] && [ "${BASH_SOURCE[0]}" != "bash" ] && [ "${BASH_SOURCE[0]}" != "sh" ]; then
-    exec sudo -E env "ANTIGRAVITY_LINUX_INSTALLER_URL=$INSTALLER_URL" bash "${BASH_SOURCE[0]}" "${ORIGINAL_ARGS[@]}"
+    exec sudo bash "${BASH_SOURCE[0]}" "${ORIGINAL_ARGS[@]}"
   fi
-  err "System-wide install needs root. Use: curl -fsSL <installer-url> | sudo -E env ANTIGRAVITY_LINUX_INSTALLER_URL=<installer-url> bash"
+  err "System-wide install needs root. Run with sudo: sudo bash install.sh or curl -fsSL <url> | sudo bash -s -- [options]"
 }
 
 download_file() {
@@ -534,40 +534,31 @@ PY
 }
 
 install_manager_command() {
-  local installer_url="$INSTALLER_URL"
-  if [ -z "$installer_url" ]; then
-    if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-      local origin_url
-      origin_url="$(git config --get remote.origin.url 2>/dev/null || true)"
-      if [[ "$origin_url" =~ github\.com[:/]([^/]+)/([^/.]+)(\.git)? ]]; then
-        local gh_user="${BASH_REMATCH[1]}"
-        local gh_repo="${BASH_REMATCH[2]}"
-        installer_url="https://raw.githubusercontent.com/$gh_user/$gh_repo/main/install.sh"
-      fi
-    fi
-    if [ -z "$installer_url" ]; then
-      installer_url="https://raw.githubusercontent.com/marc-cr1810/antigravity-installer/main/install.sh"
+  local installer_url="${INSTALLER_URL:-$DEFAULT_INSTALLER_URL}"
+  if [ "$installer_url" = "$DEFAULT_INSTALLER_URL" ] && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    local origin_url
+    origin_url="$(git config --get remote.origin.url 2>/dev/null || true)"
+    if [[ "$origin_url" =~ github\.com[:/]([^/]+)/([^/.]+)(\.git)? ]]; then
+      local gh_user="${BASH_REMATCH[1]}"
+      local gh_repo="${BASH_REMATCH[2]}"
+      installer_url="https://raw.githubusercontent.com/$gh_user/$gh_repo/main/install.sh"
     fi
   fi
+  installer_url="${installer_url:-$DEFAULT_INSTALLER_URL}"
 
   cat > /usr/local/bin/antigravity-linux <<SH
 #!/usr/bin/env bash
 set -euo pipefail
 SCRIPT_URL="$installer_url"
-if [ -z "\$SCRIPT_URL" ]; then
-  echo "No installer URL was stored." >&2
-  echo "Reinstall with ANTIGRAVITY_LINUX_INSTALLER_URL set, or run install.sh locally." >&2
-  exit 1
-fi
 case "\${1:-}" in
   --status|--print-downloads|--check-update|check-update|status|-h|--help)
-    curl -fsSL "\$SCRIPT_URL" | env ANTIGRAVITY_LINUX_INSTALLER_URL="\$SCRIPT_URL" bash -s -- "\$@"
+    curl -fsSL "\$SCRIPT_URL" | bash -s -- "\$@"
     ;;
   *)
     if [ "\$(id -u)" -eq 0 ]; then
-      curl -fsSL "\$SCRIPT_URL" | env ANTIGRAVITY_LINUX_INSTALLER_URL="\$SCRIPT_URL" bash -s -- "\$@"
+      curl -fsSL "\$SCRIPT_URL" | bash -s -- "\$@"
     else
-      curl -fsSL "\$SCRIPT_URL" | sudo -E env ANTIGRAVITY_LINUX_INSTALLER_URL="\$SCRIPT_URL" bash -s -- "\$@"
+      curl -fsSL "\$SCRIPT_URL" | sudo bash -s -- "\$@"
     fi
     ;;
 esac
@@ -803,9 +794,6 @@ ${GRAY}    • Uninstall       :${RESET} ${CYAN}sudo antigravity-linux --uninsta
 ${GREEN}╰──────────────────────────────────────────────────────────╯${RESET}
 SUMMARY
 
-  if [ -z "$INSTALLER_URL" ]; then
-    printf '%b\n' "${YELLOW}  Note:${RESET} ${DIM}Installed without a stored URL. Run this script locally for updates.${RESET}"
-  fi
   if [ "$INSTALL_IDE" -eq 1 ]; then
     printf '%b\n' "${GRAY}  • File Manager:${RESET} ${DIM}Use 'Open With' or Nautilus right-click after restarting Files.${RESET}"
   fi
