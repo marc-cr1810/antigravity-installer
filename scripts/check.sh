@@ -13,6 +13,7 @@ if ! cmp -s install.sh docs/install.sh; then
 fi
 
 bash install.sh --status >/dev/null
+bash install.sh --check-update >/dev/null
 bash install.sh --all --print-downloads >/dev/null
 
 if ! grep -q '/opt/antigravity.new' install.sh || ! grep -q '/opt/antigravity-ide.new' install.sh; then

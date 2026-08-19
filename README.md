@@ -93,6 +93,20 @@ IDE only:
 sudo update-antigravity-ide
 ```
 
+## Check for Updates
+
+Quickly check if newer versions are available on Google without downloading the full packages:
+
+```bash
+antigravity-linux --check-update
+```
+
+Or using the local script:
+
+```bash
+bash install.sh --check-update
+```
+
 ## Status
 
 When installed from a published URL:
@@ -136,6 +150,7 @@ The uninstall removes helper-managed files from `/opt`, `/usr/local/bin`, `/usr/
 --force            Reinstall even when the recorded version matches
 --install-url URL  Store URL used by the antigravity-linux update command
 --status           Show installed helper-managed apps and versions
+--check-update     Check if newer versions are available from Google
 --print-downloads  Print resolved official Google tarball URLs
 --uninstall        Remove helper-managed installation
 -y, --yes          Non-interactive; assume yes where possible

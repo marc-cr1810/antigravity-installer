@@ -16,6 +16,7 @@ INSTALL_DEPS=1
 DO_UNINSTALL=0
 DO_STATUS=0
 DO_PRINT_DOWNLOADS=0
+DO_CHECK_UPDATE=0
 CLEAN_LEGACY=0
 PRODUCT_FILTER_SET=0
 FORCE=0
@@ -81,6 +82,7 @@ ${DIM}Installs and manages Google Antigravity 2.0 and Antigravity IDE on Linux.$
 ${BOLD}Usage:${RESET}
   install.sh [install|update] [options]
   install.sh --status
+  install.sh --check-update
   install.sh --print-downloads
   install.sh --uninstall
 
@@ -98,6 +100,7 @@ ${BOLD}Options:${RESET}
   ${CYAN}--force${RESET}                Reinstall even when the recorded version matches
   ${CYAN}--install-url URL${RESET}      Store URL used by the antigravity-linux update command
   ${CYAN}--status${RESET}               Show installed helper-managed apps and versions
+  ${CYAN}--check-update${RESET}         Check if newer versions are available from Google
   ${CYAN}--print-downloads${RESET}      Print the resolved official Google tarball URLs
   ${CYAN}--uninstall${RESET}            Remove helper-managed Antigravity desktop/IDE files
   ${CYAN}-y, --yes${RESET}              Non-interactive; assume yes where possible
@@ -115,6 +118,7 @@ USAGE
 while [ $# -gt 0 ]; do
   case "$1" in
     install|update) ;;
+    check-update|--check-update) DO_CHECK_UPDATE=1 ;;
     --desktop) INSTALL_DESKTOP=1; INSTALL_IDE=0; PRODUCT_FILTER_SET=1 ;;
     --ide) INSTALL_DESKTOP=0; INSTALL_IDE=1; PRODUCT_FILTER_SET=1 ;;
     --all) INSTALL_DESKTOP=1; INSTALL_IDE=1; PRODUCT_FILTER_SET=1 ;;
@@ -540,11 +544,18 @@ if [ -z "\$SCRIPT_URL" ]; then
   echo "Reinstall with ANTIGRAVITY_LINUX_INSTALLER_URL set, or run install.sh locally." >&2
   exit 1
 fi
-if [ "\$(id -u)" -eq 0 ]; then
-  curl -fsSL "\$SCRIPT_URL" | env ANTIGRAVITY_LINUX_INSTALLER_URL="\$SCRIPT_URL" bash -s -- "\$@"
-else
-  curl -fsSL "\$SCRIPT_URL" | sudo -E env ANTIGRAVITY_LINUX_INSTALLER_URL="\$SCRIPT_URL" bash -s -- "\$@"
-fi
+case "\${1:-}" in
+  --status|--print-downloads|--check-update|check-update|status|-h|--help)
+    curl -fsSL "\$SCRIPT_URL" | env ANTIGRAVITY_LINUX_INSTALLER_URL="\$SCRIPT_URL" bash -s -- "\$@"
+    ;;
+  *)
+    if [ "\$(id -u)" -eq 0 ]; then
+      curl -fsSL "\$SCRIPT_URL" | env ANTIGRAVITY_LINUX_INSTALLER_URL="\$SCRIPT_URL" bash -s -- "\$@"
+    else
+      curl -fsSL "\$SCRIPT_URL" | sudo -E env ANTIGRAVITY_LINUX_INSTALLER_URL="\$SCRIPT_URL" bash -s -- "\$@"
+    fi
+    ;;
+esac
 SH
   chmod +x /usr/local/bin/antigravity-linux
   cat > /usr/local/bin/update-antigravity <<'SH'
@@ -656,6 +667,68 @@ print_status() {
   printf '\n'
 }
 
+check_updates() {
+  need curl
+  need python3
+  local tmp_parent="${TMPDIR:-/tmp}"
+  local tmpdir
+  tmpdir=$(mktemp -d "$tmp_parent/$PROJECT_NAME.XXXXXX")
+  local page_file
+  page_file=$(fetch_download_page "$tmpdir")
+  print_banner
+  printf '\n%b\n' "${TEAL}${BOLD}──➤ Checking for Updates (${AG_PLATFORM})${RESET}"
+
+  local show_desktop=1
+  local show_ide=1
+  local updates_available=0
+
+  if [ "$PRODUCT_FILTER_SET" -eq 1 ]; then
+    show_desktop=$INSTALL_DESKTOP
+    show_ide=$INSTALL_IDE
+  fi
+
+  if [ "$show_desktop" -eq 1 ]; then
+    local installed_v
+    installed_v="$(installed_version /opt/antigravity/.antigravity-linux-version)"
+    local remote_v remote_url
+    read -r remote_v remote_url < <(resolve_desktop_download "$page_file")
+
+    if [ -z "$installed_v" ]; then
+      printf '%b\n' "${CYAN}  ●${RESET} ${BOLD}Antigravity 2.0:${RESET} ${GRAY}not installed${RESET} ${DIM}(Latest available: v$remote_v)${RESET}"
+    elif [ "$installed_v" = "$remote_v" ]; then
+      printf '%b\n' "${GREEN}  ✔${RESET} ${BOLD}Antigravity 2.0:${RESET} ${GREEN}up to date${RESET} ${DIM}(v$installed_v)${RESET}"
+    else
+      printf '%b\n' "${YELLOW}  ▲${RESET} ${BOLD}Antigravity 2.0:${RESET} ${YELLOW}${BOLD}update available!${RESET} ${DIM}(v$installed_v ➔ ${BOLD}v$remote_v${RESET}${DIM})${RESET}"
+      updates_available=1
+    fi
+  fi
+
+  if [ "$show_ide" -eq 1 ]; then
+    local installed_v
+    installed_v="$(installed_version /opt/antigravity-ide/.antigravity-linux-version)"
+    local remote_v remote_url
+    read -r remote_v remote_url < <(resolve_ide_download "$page_file")
+
+    if [ -z "$installed_v" ]; then
+      printf '%b\n' "${CYAN}  ●${RESET} ${BOLD}Antigravity IDE:${RESET} ${GRAY}not installed${RESET} ${DIM}(Latest available: v$remote_v)${RESET}"
+    elif [ "$installed_v" = "$remote_v" ]; then
+      printf '%b\n' "${GREEN}  ✔${RESET} ${BOLD}Antigravity IDE:${RESET} ${GREEN}up to date${RESET} ${DIM}(v$installed_v)${RESET}"
+    else
+      printf '%b\n' "${YELLOW}  ▲${RESET} ${BOLD}Antigravity IDE:${RESET} ${YELLOW}${BOLD}update available!${RESET} ${DIM}(v$installed_v ➔ ${BOLD}v$remote_v${RESET}${DIM})${RESET}"
+      updates_available=1
+    fi
+  fi
+
+  printf '\n'
+  if [ "$updates_available" -eq 1 ]; then
+    printf '%b\n' "${CYAN}  • To install updates:${RESET} ${BOLD}sudo antigravity-linux update --all${RESET}\n"
+  else
+    printf '%b\n' "${GREEN}  ✔ All checked installed components are up to date.${RESET}\n"
+  fi
+
+  rm -rf "$tmpdir"
+}
+
 print_downloads() {
   need curl
   need python3
@@ -709,6 +782,7 @@ $( [ "$INSTALL_IDE" -eq 1 ] && printf '%b\n' "${GRAY}    • Antigravity IDE :${
 
 ${BOLD}  Management Commands:${RESET}
 ${GRAY}    • Status          :${RESET} ${CYAN}antigravity-linux --status${RESET}
+${GRAY}    • Check Updates   :${RESET} ${CYAN}antigravity-linux --check-update${RESET}
 ${GRAY}    • Update All      :${RESET} ${CYAN}sudo antigravity-linux update --all${RESET}
 ${GRAY}    • Uninstall       :${RESET} ${CYAN}sudo antigravity-linux --uninstall${RESET}
 ${GREEN}╰──────────────────────────────────────────────────────────╯${RESET}
@@ -752,6 +826,10 @@ uninstall_all() {
 main() {
   if [ "$DO_STATUS" -eq 1 ]; then
     print_status
+    exit 0
+  fi
+  if [ "$DO_CHECK_UPDATE" -eq 1 ]; then
+    check_updates
     exit 0
   fi
   if [ "$DO_PRINT_DOWNLOADS" -eq 1 ]; then

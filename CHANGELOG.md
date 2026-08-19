@@ -5,8 +5,9 @@
 - Fix download URL resolution after upstream Antigravity download page transitioned to Astro/server-rendered HTML.
 - Add support for direct HTML parsing with script bundle fallback.
 - Modernize terminal user interface with ANSI typography, styled cards, banners, step indicators, and progress bars.
+- Add `--check-update` feature for instant lightweight version comparison against upstream Google releases.
 - Add legacy Antigravity 1.x `.deb` package detection and cleanup (`--clean-legacy` option and interactive prompt).
-- Add `--all --print-downloads` check in CI test suite.
+- Add `--check-update` and `--all --print-downloads` checks in CI test suite.
 
 ## 0.1.0 - Initial public project
 
