@@ -803,17 +803,15 @@ print_success_summary() {
 
 ${GREEN}╭──────────────────────────────────────────────────────────╮
 │ ${BOLD}✔ Antigravity Linux Setup Complete${RESET}${GREEN}                       │
-├──────────────────────────────────────────────────────────┤${RESET}
-${BOLD}  Installed Launchers:${RESET}
-$( [ "$INSTALL_DESKTOP" -eq 1 ] && printf '%b\n' "${GRAY}    • Antigravity 2.0 :${RESET} /usr/local/bin/antigravity" )
-$( [ "$INSTALL_IDE" -eq 1 ] && printf '%b\n' "${GRAY}    • Antigravity IDE :${RESET} /usr/local/bin/antigravity-ide" )
-
-${BOLD}  Management Commands:${RESET}
-${GRAY}    • Status          :${RESET} ${CYAN}antigravity-linux --status${RESET}
-${GRAY}    • Check Updates   :${RESET} ${CYAN}antigravity-linux --check-update${RESET}
-${GRAY}    • Update All      :${RESET} ${CYAN}sudo antigravity-linux update --all${RESET}
-${GRAY}    • Uninstall       :${RESET} ${CYAN}sudo antigravity-linux --uninstall${RESET}
-${GREEN}╰──────────────────────────────────────────────────────────╯${RESET}
+├──────────────────────────────────────────────────────────┤
+│${RESET}  ${BOLD}Installed Launchers:${RESET}${GREEN}                                    │$([ "$INSTALL_DESKTOP" -eq 1 ] && printf "\n%b" "${GREEN}│${RESET}  ${GRAY}• Antigravity 2.0 :${RESET} /usr/local/bin/antigravity          ${GREEN}│${RESET}")$([ "$INSTALL_IDE" -eq 1 ] && printf "\n%b" "${GREEN}│${RESET}  ${GRAY}• Antigravity IDE :${RESET} /usr/local/bin/antigravity-ide      ${GREEN}│${RESET}")$([ "$INSTALL_DESKTOP" -eq 0 ] && [ "$INSTALL_IDE" -eq 0 ] && printf "\n%b" "${GREEN}│${RESET}  ${GRAY}• Antigravity CLI :${RESET} ~/.antigravity/bin/agy              ${GREEN}│${RESET}")
+${GREEN}│                                                          │
+│${RESET}  ${BOLD}Management Commands:${RESET}${GREEN}                                    │
+│${RESET}  ${GRAY}• Status          :${RESET} ${CYAN}antigravity-linux --status${RESET}          ${GREEN}│
+│${RESET}  ${GRAY}• Check Updates   :${RESET} ${CYAN}antigravity-linux --check-update${RESET}    ${GREEN}│
+│${RESET}  ${GRAY}• Update All      :${RESET} ${CYAN}sudo antigravity-linux update --all${RESET} ${GREEN}│
+│${RESET}  ${GRAY}• Uninstall       :${RESET} ${CYAN}sudo antigravity-linux --uninstall${RESET}  ${GREEN}│
+╰──────────────────────────────────────────────────────────╯${RESET}
 SUMMARY
 
   if [ "$INSTALL_IDE" -eq 1 ]; then
