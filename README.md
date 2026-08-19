@@ -61,25 +61,33 @@ This project does **not** mirror, modify, or redistribute Google binaries. It re
 
 ## Quick Start
 
-### 1. Install Antigravity 2.0 and Antigravity IDE (Recommended)
+### 1. Interactive Installer (Menu Selection)
+Run the script without flags in your terminal to interactively select which components to install:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/marc-cr1810/antigravity-installer/main/install.sh -o install.sh
+sudo bash install.sh
+```
+
+### 2. Install Antigravity 2.0 and Antigravity IDE (Non-Interactive)
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/marc-cr1810/antigravity-installer/main/install.sh | sudo bash -s -- --all
 ```
 
-### 2. Install Only Antigravity 2.0 Desktop App
+### 3. Install Only Antigravity 2.0 Desktop App
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/marc-cr1810/antigravity-installer/main/install.sh | sudo bash -s -- --desktop
 ```
 
-### 3. Install Only Antigravity IDE
+### 4. Install Only Antigravity IDE
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/marc-cr1810/antigravity-installer/main/install.sh | sudo bash -s -- --ide
 ```
 
-### 4. Install with Official Google CLI Tool
+### 5. Install with Official Google CLI Tool
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/marc-cr1810/antigravity-installer/main/install.sh | sudo bash -s -- --all --cli
@@ -149,7 +157,10 @@ antigravity-linux --print-downloads
 Remove helper-managed binaries, desktop entries, icons, and file-manager extensions:
 
 ```bash
-# Remove individual applications
+# Interactive uninstaller (prompts to choose which installed app to remove)
+sudo antigravity-linux uninstall
+
+# Direct removal for individual applications
 sudo antigravity-linux uninstall --desktop   # Desktop app only
 sudo antigravity-linux uninstall --ide       # IDE only
 

@@ -853,7 +853,20 @@ uninstall_ide() {
 uninstall_selected() {
   require_root_or_reexec
   print_banner
-  log_step "Uninstalling Antigravity Linux components"
+
+  local has_desktop=0
+  local has_ide=0
+  if [ -d /opt/antigravity ] || [ -f /usr/local/bin/antigravity ]; then
+    has_desktop=1
+  fi
+  if [ -d /opt/antigravity-ide ] || [ -f /usr/local/bin/antigravity-ide ]; then
+    has_ide=1
+  fi
+
+  if [ "$has_desktop" -eq 0 ] && [ "$has_ide" -eq 0 ] && ! has_legacy_deb_package; then
+    log_info "No helper-managed Antigravity installations found on this system."
+    exit 0
+  fi
 
   local remove_desktop=0
   local remove_ide=0
@@ -861,11 +874,47 @@ uninstall_selected() {
   if [ "$PRODUCT_FILTER_SET" -eq 1 ]; then
     remove_desktop=$INSTALL_DESKTOP
     remove_ide=$INSTALL_IDE
+  elif [ "$YES" -eq 0 ] && [ -t 0 ]; then
+    if [ "$has_desktop" -eq 1 ] && [ "$has_ide" -eq 1 ]; then
+      printf '\n%b\n' "${TEAL}${BOLD}Detected installed Antigravity components:${RESET}"
+      printf '%b\n' "${CYAN}  1)${RESET} Antigravity 2.0 (Desktop app)"
+      printf '%b\n' "${CYAN}  2)${RESET} Antigravity IDE"
+      printf '%b\n' "${CYAN}  3)${RESET} All components (Desktop + IDE) ${DIM}[Default]${RESET}"
+      printf '%b\n' "${CYAN}  4)${RESET} Cancel\n"
+
+      local choice=""
+      read -r -p "Select component to uninstall [1-4] (default: 3): " choice
+      choice="${choice:-3}"
+      case "$choice" in
+        1) remove_desktop=1; remove_ide=0 ;;
+        2) remove_desktop=0; remove_ide=1 ;;
+        3) remove_desktop=1; remove_ide=1 ;;
+        4|[Qq]|cancel|[Cc]) log_info "Uninstallation cancelled."; exit 0 ;;
+        *) warn "Invalid selection '$choice'. Defaulting to all components."; remove_desktop=1; remove_ide=1 ;;
+      esac
+    elif [ "$has_desktop" -eq 1 ]; then
+      printf '\n%b\n' "${YELLOW}  ▲ Found installed:${RESET} ${BOLD}Antigravity 2.0${RESET} (/opt/antigravity)"
+      read -r -p "    Uninstall Antigravity 2.0? [Y/n] " answer
+      if [[ "$answer" =~ ^[Nn]$ ]]; then
+        log_info "Uninstallation cancelled."
+        exit 0
+      fi
+      remove_desktop=1
+    elif [ "$has_ide" -eq 1 ]; then
+      printf '\n%b\n' "${YELLOW}  ▲ Found installed:${RESET} ${BOLD}Antigravity IDE${RESET} (/opt/antigravity-ide)"
+      read -r -p "    Uninstall Antigravity IDE? [Y/n] " answer
+      if [[ "$answer" =~ ^[Nn]$ ]]; then
+        log_info "Uninstallation cancelled."
+        exit 0
+      fi
+      remove_ide=1
+    fi
   else
     remove_desktop=1
     remove_ide=1
   fi
 
+  log_step "Uninstalling Antigravity Linux components"
   [ "$remove_desktop" -eq 1 ] && uninstall_desktop
   [ "$remove_ide" -eq 1 ] && uninstall_ide
 
@@ -887,6 +936,57 @@ uninstall_selected() {
       printf '%b\n' "${GRAY}    To remove it completely:${RESET} ${CYAN}sudo apt remove antigravity${RESET}\n"
     fi
   fi
+}
+
+prompt_interactive_install() {
+  printf '\n%b\n' "${TEAL}${BOLD}Select Antigravity components to install:${RESET}"
+  printf '%b\n' "${CYAN}  1)${RESET} ${BOLD}Antigravity 2.0${RESET} (Desktop app) ${DIM}[Default]${RESET}"
+  printf '%b\n' "${CYAN}  2)${RESET} ${BOLD}Antigravity IDE${RESET}"
+  printf '%b\n' "${CYAN}  3)${RESET} ${BOLD}Both${RESET} (Antigravity 2.0 + Antigravity IDE)"
+  printf '%b\n' "${CYAN}  4)${RESET} ${BOLD}All + Official CLI${RESET} (Antigravity 2.0 + IDE + 'agy' CLI)"
+  printf '%b\n' "${CYAN}  5)${RESET} Cancel\n"
+
+  local choice=""
+  read -r -p "Enter selection [1-5] (default: 1): " choice
+  choice="${choice:-1}"
+
+  case "$choice" in
+    1)
+      INSTALL_DESKTOP=1
+      INSTALL_IDE=0
+      INSTALL_CLI=0
+      PRODUCT_FILTER_SET=1
+      ;;
+    2)
+      INSTALL_DESKTOP=0
+      INSTALL_IDE=1
+      INSTALL_CLI=0
+      PRODUCT_FILTER_SET=1
+      ;;
+    3)
+      INSTALL_DESKTOP=1
+      INSTALL_IDE=1
+      INSTALL_CLI=0
+      PRODUCT_FILTER_SET=1
+      ;;
+    4)
+      INSTALL_DESKTOP=1
+      INSTALL_IDE=1
+      INSTALL_CLI=1
+      PRODUCT_FILTER_SET=1
+      ;;
+    5|[Qq]|cancel|[Cc])
+      log_info "Installation cancelled."
+      exit 0
+      ;;
+    *)
+      warn "Invalid selection '$choice'. Defaulting to Antigravity 2.0 (Desktop app)."
+      INSTALL_DESKTOP=1
+      INSTALL_IDE=0
+      INSTALL_CLI=0
+      PRODUCT_FILTER_SET=1
+      ;;
+  esac
 }
 
 main() {
@@ -915,6 +1015,9 @@ main() {
 
   require_root_or_reexec
   print_banner
+  if [ "$PRODUCT_FILTER_SET" -eq 0 ] && [ "$EXPLICIT_INSTALL" -eq 0 ] && [ "$YES" -eq 0 ] && [ -t 0 ]; then
+    prompt_interactive_install
+  fi
   install_deps_debian
   handle_legacy_conflict
 
