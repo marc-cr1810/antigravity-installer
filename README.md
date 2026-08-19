@@ -146,10 +146,19 @@ antigravity-linux --print-downloads
 ```
 
 ### Uninstall
-Remove all helper-managed binaries, desktop entries, icons, and file-manager extensions:
+Remove helper-managed binaries, desktop entries, icons, and file-manager extensions:
 
 ```bash
-sudo antigravity-linux --uninstall
+# Remove individual applications
+sudo antigravity-linux uninstall --desktop   # Desktop app only
+sudo antigravity-linux uninstall --ide       # IDE only
+
+# Shortcut commands
+sudo uninstall-antigravity                  # Desktop app only
+sudo uninstall-antigravity-ide              # IDE only
+
+# Remove everything helper-managed
+sudo antigravity-linux uninstall --all
 ```
 
 > **Note:** User configurations and personal workspaces in your home directory (`~/.config`, `~/.gemini`) are preserved.

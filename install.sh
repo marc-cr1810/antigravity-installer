@@ -94,19 +94,20 @@ ${DIM}Installs and manages Google Antigravity 2.0 and Antigravity IDE on Linux.$
 
 ${BOLD}Usage:${RESET}
   install.sh [install|update] [options]
+  install.sh uninstall [--desktop|--ide|--all]
   install.sh --status
   install.sh --check-update
   install.sh --clean-legacy
   install.sh --print-downloads
-  install.sh --uninstall
+  install.sh --uninstall [--desktop|--ide|--all]
 
 ${BOLD}Default:${RESET}
   Installs or updates Antigravity 2.0 desktop app system-wide.
 
 ${BOLD}Options:${RESET}
-  ${CYAN}--desktop${RESET}              Install/update Antigravity 2.0 desktop app only (default)
-  ${CYAN}--ide${RESET}                  Install/update Antigravity IDE only
-  ${CYAN}--all${RESET}                  Install/update Antigravity 2.0 desktop app + Antigravity IDE
+  ${CYAN}--desktop${RESET}              Target Antigravity 2.0 desktop app only (default for install/update)
+  ${CYAN}--ide${RESET}                  Target Antigravity IDE only
+  ${CYAN}--all${RESET}                  Target both Antigravity 2.0 desktop app + Antigravity IDE
   ${CYAN}--cli${RESET}                  Also run Google's official Antigravity CLI installer
   ${CYAN}--clean-legacy${RESET}         Remove legacy Antigravity 1.x Debian package if present
   ${CYAN}--no-nautilus${RESET}          Skip GNOME Files/Nautilus context-menu helper
@@ -131,11 +132,12 @@ USAGE
 while [ $# -gt 0 ]; do
   case "$1" in
     install|update) EXPLICIT_INSTALL=1 ;;
+    uninstall|--uninstall) DO_UNINSTALL=1 ;;
+    desktop|--desktop) INSTALL_DESKTOP=1; INSTALL_IDE=0; PRODUCT_FILTER_SET=1; EXPLICIT_INSTALL=1 ;;
+    ide|--ide) INSTALL_DESKTOP=0; INSTALL_IDE=1; PRODUCT_FILTER_SET=1; EXPLICIT_INSTALL=1 ;;
+    all|--all) INSTALL_DESKTOP=1; INSTALL_IDE=1; PRODUCT_FILTER_SET=1; EXPLICIT_INSTALL=1 ;;
+    cli|--cli) INSTALL_CLI=1; PRODUCT_FILTER_SET=1; EXPLICIT_INSTALL=1 ;;
     check-update|--check-update) DO_CHECK_UPDATE=1 ;;
-    --desktop) INSTALL_DESKTOP=1; INSTALL_IDE=0; PRODUCT_FILTER_SET=1; EXPLICIT_INSTALL=1 ;;
-    --ide) INSTALL_DESKTOP=0; INSTALL_IDE=1; PRODUCT_FILTER_SET=1; EXPLICIT_INSTALL=1 ;;
-    --all) INSTALL_DESKTOP=1; INSTALL_IDE=1; PRODUCT_FILTER_SET=1; EXPLICIT_INSTALL=1 ;;
-    --cli) INSTALL_CLI=1; PRODUCT_FILTER_SET=1; EXPLICIT_INSTALL=1 ;;
     clean-legacy|--clean-legacy) CLEAN_LEGACY=1 ;;
     --no-nautilus) INSTALL_NAUTILUS=0 ;;
     --no-apt) INSTALL_DEPS=0 ;;
@@ -145,9 +147,8 @@ while [ $# -gt 0 ]; do
       [ $# -gt 0 ] || err "--install-url needs a URL"
       INSTALLER_URL="$1"
       ;;
-    --status) DO_STATUS=1 ;;
+    status|--status) DO_STATUS=1 ;;
     --print-downloads) DO_PRINT_DOWNLOADS=1 ;;
-    --uninstall) DO_UNINSTALL=1 ;;
     -y|--yes) YES=1 ;;
     -h|--help) usage; exit 0 ;;
     *) err "Unknown option: $1" ;;
@@ -594,6 +595,16 @@ SH
 exec antigravity-linux update --ide "$@"
 SH
   chmod +x /usr/local/bin/update-antigravity-ide
+  cat > /usr/local/bin/uninstall-antigravity <<'SH'
+#!/usr/bin/env bash
+exec antigravity-linux uninstall --desktop "$@"
+SH
+  chmod +x /usr/local/bin/uninstall-antigravity
+  cat > /usr/local/bin/uninstall-antigravity-ide <<'SH'
+#!/usr/bin/env bash
+exec antigravity-linux uninstall --ide "$@"
+SH
+  chmod +x /usr/local/bin/uninstall-antigravity-ide
 }
 
 has_legacy_deb_package() {
@@ -820,21 +831,53 @@ SUMMARY
   printf '\n'
 }
 
-uninstall_all() {
+uninstall_desktop() {
+  log_info "Removing Antigravity 2.0 desktop app..."
+  rm -rf /opt/antigravity /opt/antigravity.new /opt/antigravity.previous
+  rm -f /usr/local/bin/antigravity /usr/local/bin/update-antigravity /usr/local/bin/uninstall-antigravity
+  rm -f /usr/share/applications/antigravity.desktop
+  rm -f /usr/share/icons/hicolor/512x512/apps/antigravity.png
+  log_success "Removed Antigravity 2.0 desktop app."
+}
+
+uninstall_ide() {
+  log_info "Removing Antigravity IDE..."
+  rm -rf /opt/antigravity-ide /opt/antigravity-ide.new /opt/antigravity-ide.previous
+  rm -f /usr/local/bin/antigravity-ide /usr/local/bin/update-antigravity-ide /usr/local/bin/uninstall-antigravity-ide
+  rm -f /usr/share/applications/antigravity-ide.desktop
+  rm -f /usr/share/icons/hicolor/512x512/apps/antigravity-ide.png
+  rm -f /usr/share/nautilus-python/extensions/open-in-antigravity-ide.py
+  log_success "Removed Antigravity IDE."
+}
+
+uninstall_selected() {
   require_root_or_reexec
   print_banner
-  log_step "Uninstalling Antigravity Linux"
-  log_info "Removing installation directories and binaries..."
-  rm -rf /opt/antigravity /opt/antigravity.new /opt/antigravity.previous /opt/antigravity-ide /opt/antigravity-ide.new /opt/antigravity-ide.previous
-  rm -f /usr/local/bin/antigravity /usr/local/bin/antigravity-ide /usr/local/bin/update-antigravity /usr/local/bin/update-antigravity-ide /usr/local/bin/antigravity-linux
-  rm -f /usr/share/applications/antigravity.desktop /usr/share/applications/antigravity-ide.desktop
-  rm -f /usr/share/icons/hicolor/512x512/apps/antigravity.png /usr/share/icons/hicolor/512x512/apps/antigravity-ide.png
-  rm -f /usr/share/nautilus-python/extensions/open-in-antigravity-ide.py
+  log_step "Uninstalling Antigravity Linux components"
+
+  local remove_desktop=0
+  local remove_ide=0
+
+  if [ "$PRODUCT_FILTER_SET" -eq 1 ]; then
+    remove_desktop=$INSTALL_DESKTOP
+    remove_ide=$INSTALL_IDE
+  else
+    remove_desktop=1
+    remove_ide=1
+  fi
+
+  [ "$remove_desktop" -eq 1 ] && uninstall_desktop
+  [ "$remove_ide" -eq 1 ] && uninstall_ide
+
+  # If neither Desktop nor IDE remains installed, remove helper manager command
+  if [ ! -d /opt/antigravity ] && [ ! -d /opt/antigravity-ide ]; then
+    rm -f /usr/local/bin/antigravity-linux /usr/local/bin/update-antigravity /usr/local/bin/update-antigravity-ide /usr/local/bin/uninstall-antigravity /usr/local/bin/uninstall-antigravity-ide
+  fi
+
   refresh_desktop_caches
-  log_success "Removed helper-managed Antigravity files."
   printf '%b\n' "${DIM}  User settings under home directories were left untouched.${RESET}"
 
-  if has_legacy_deb_package; then
+  if [ "$remove_desktop" -eq 1 ] && has_legacy_deb_package; then
     if [ "$CLEAN_LEGACY" -eq 1 ]; then
       clean_legacy_installation
     else
@@ -860,7 +903,7 @@ main() {
     exit 0
   fi
   if [ "$DO_UNINSTALL" -eq 1 ]; then
-    uninstall_all
+    uninstall_selected
     exit 0
   fi
   if [ "$CLEAN_LEGACY" -eq 1 ] && [ "$EXPLICIT_INSTALL" -eq 0 ]; then

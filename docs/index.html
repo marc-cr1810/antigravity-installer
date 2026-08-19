@@ -1223,10 +1223,27 @@ curl -fsSL "$INSTALLER_URL" | sudo -E env ANTIGRAVITY_LINUX_INSTALLER_URL="$INST
               </div>
             </details>
 
+            <details class="faq-item" id="faq-uninstall-individual">
+              <summary><span>How do I uninstall an individual application?</span><a class="faq-link" href="#faq-uninstall-individual" aria-label="Link to this FAQ">#</a></summary>
+              <div class="faq-body">
+                <p>Pass <code>--desktop</code> or <code>--ide</code> with <code>uninstall</code>, or use the dedicated helper shortcuts:</p>
+                <div class="code-block mt-4">
+                  <div class="code-header"><span class="text-xs text-slate-400 font-mono">uninstall-desktop.sh</span><button class="btn-copy" data-copy='sudo antigravity-linux uninstall --desktop'>Copy</button></div>
+                  <div class="code-content font-mono text-slate-300 text-sm"><code><span class="syn-cmd">sudo</span> antigravity-linux uninstall <span class="syn-arg">--desktop</span></code></div>
+                </div>
+                <p>Removes only the Antigravity 2.0 desktop app (or run <code>sudo uninstall-antigravity</code>).</p>
+                <div class="code-block mt-4">
+                  <div class="code-header"><span class="text-xs text-slate-400 font-mono">uninstall-ide.sh</span><button class="btn-copy" data-copy='sudo antigravity-linux uninstall --ide'>Copy</button></div>
+                  <div class="code-content font-mono text-slate-300 text-sm"><code><span class="syn-cmd">sudo</span> antigravity-linux uninstall <span class="syn-arg">--ide</span></code></div>
+                </div>
+                <p>Removes only Antigravity IDE and its Nautilus extension (or run <code>sudo uninstall-antigravity-ide</code>).</p>
+              </div>
+            </details>
+
             <details class="faq-item" id="faq-uninstall">
               <summary><span>How do I uninstall everything this helper manages?</span><a class="faq-link" href="#faq-uninstall" aria-label="Link to this FAQ">#</a></summary>
               <div class="faq-body">
-                <p>Use <code>--uninstall</code>. It removes helper-managed files from system locations and leaves user settings under home directories untouched.</p>
+                <p>Use <code>--uninstall</code> or <code>uninstall --all</code>. It removes helper-managed files from system locations and leaves user settings under home directories untouched.</p>
                 <div class="code-block mt-4">
                   <div class="code-header"><span class="text-xs text-slate-400 font-mono">published-install-uninstall.sh</span><button class="btn-copy" data-copy='sudo antigravity-linux --uninstall'>Copy</button></div>
                   <div class="code-content font-mono text-slate-300 text-sm"><code><span class="syn-cmd">sudo</span> antigravity-linux <span class="syn-arg">--uninstall</span></code></div>
