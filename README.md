@@ -16,239 +16,278 @@
                    ╚══════╝╚═╝╚═╝  ╚═══╝ ╚═════╝ ╚═╝  ╚═╝
 ```
 
-> **This is a community helper. Not affiliated with, endorsed by, or supported by Google.**
+[![CI](https://github.com/marc-cr1810/antigravity-installer/actions/workflows/ci.yml/badge.svg)](https://github.com/marc-cr1810/antigravity-installer/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Platform: Linux](https://img.shields.io/badge/Platform-Linux%20(x86__64%20%7C%20ARM64)-teal.svg)](#supported-systems)
+[![Release](https://img.shields.io/badge/Release-v0.1.1-green.svg)](CHANGELOG.md)
 
-One-command Linux installer/updater for **Google Antigravity 2.0** and **Antigravity IDE** using Google's official tarball downloads.
+> **Disclaimer:** This is an open-source community helper. It is not affiliated with, endorsed by, or supported by Google. Google Antigravity is a trademark of Google LLC.
 
-This project does **not** mirror, modify, or redistribute Google Antigravity. The installer resolves the latest official Google tarball from [https://antigravity.google/download](https://antigravity.google/download) at install/update time, then adds Linux desktop integration around it.
+A modern, one-command Linux installer and package manager for **Google Antigravity 2.0** and **Antigravity IDE** using Google's official Linux tarball downloads.
 
+This project does **not** mirror, modify, or redistribute Google binaries. It resolves the latest official release directly from [https://antigravity.google/download](https://antigravity.google/download) at install/update time and sets up native Linux desktop integration.
+
+---
+
+## Table of Contents
+
+- [Features](#features)
+- [Quick Start](#quick-start)
+- [Managing & Updating](#managing--updating)
+- [Legacy 1.x Migration](#legacy-1x-migration)
+- [Options & CLI Flags](#options--cli-flags)
+- [What It Installs](#what-it-installs)
+- [Supported Systems](#supported-systems)
+- [Local Development & GitHub Pages](#local-development--github-pages)
+- [Security & Transparency](#security--transparency)
+- [Contributing](#contributing)
+- [License](#license)
+
+---
 
 ## Features
 
-- Installs the latest official Antigravity 2.0 Linux tarball.
-- Optionally installs Antigravity IDE.
-- Supports x86_64 and ARM64 Linux builds when Google provides them.
-- Installs app menu launchers.
-- Installs icons when available from the tarball.
-- Adds command-line launchers:
-  - `antigravity`
-  - `antigravity-ide`
-- Adds update helper:
-  - `sudo antigravity-linux update --all`
-- Adds folder opening integration for IDE:
-  - file manager `Open With` support through `.desktop` MIME entries
-  - optional GNOME Files/Nautilus right-click menu helper
-- Preserves the Electron/Chromium sandbox permission model instead of launching with `--no-sandbox` by default.
+- **Official Downloads:** Resolves and downloads upstream tarballs directly from Google.
+- **Multi-Architecture:** Automatically detects CPU architecture (`x86_64` / `amd64` and `aarch64` / `arm64`).
+- **Complete Desktop Integration:** Installs `.desktop` menu launchers, high-resolution icons, and MIME types.
+- **Command-Line Launchers:** Provides global `/usr/local/bin/antigravity` and `/usr/local/bin/antigravity-ide` binaries.
+- **Update Checker:** Fast `--check-update` tool to compare installed vs upstream versions without downloading large tarballs.
+- **Self-Updating Manager:** Includes `antigravity-linux` for seamless updates and maintenance.
+- **Legacy 1.x Cleanup:** Detects and cleanly removes obsolete `antigravity` `.deb` packages to avoid duplicate launchers.
+- **File Manager Integration:** Optional GNOME Files / Nautilus right-click context menu extension for Antigravity IDE.
+- **Security-First:** Preserves Chromium/Electron sandbox permissions (`chrome-sandbox`) rather than disabling the sandbox.
 
-## Minimum Requirements
-> `glibc >= 2.28, glibcxx >= 3.4.25 (e.g. Ubuntu 20. Debian 10, Fedora 36, RHEL 8)`
+---
 
-## Quick install from GitHub Pages
+## Quick Start
 
-Install Antigravity 2.0 and the IDE:
+### 1. Install Antigravity 2.0 and Antigravity IDE (Recommended)
 
 ```bash
 INSTALLER_URL="https://marc-cr1810.github.io/antigravity-installer/install.sh"
 curl -fsSL "$INSTALLER_URL" | sudo -E env ANTIGRAVITY_LINUX_INSTALLER_URL="$INSTALLER_URL" bash -s -- --all
 ```
 
-Install only Antigravity 2.0 desktop app:
+### 2. Install Only Antigravity 2.0 Desktop App
 
 ```bash
 INSTALLER_URL="https://marc-cr1810.github.io/antigravity-installer/install.sh"
-curl -fsSL "$INSTALLER_URL" | sudo -E env ANTIGRAVITY_LINUX_INSTALLER_URL="$INSTALLER_URL" bash -s --
+curl -fsSL "$INSTALLER_URL" | sudo -E env ANTIGRAVITY_LINUX_INSTALLER_URL="$INSTALLER_URL" bash -s -- --desktop
 ```
 
-Install only Antigravity IDE:
+### 3. Install Only Antigravity IDE
 
 ```bash
 INSTALLER_URL="https://marc-cr1810.github.io/antigravity-installer/install.sh"
 curl -fsSL "$INSTALLER_URL" | sudo -E env ANTIGRAVITY_LINUX_INSTALLER_URL="$INSTALLER_URL" bash -s -- --ide
 ```
 
-## Quick install from raw GitHub
+### 4. Install with Official Google CLI Tool
+
+```bash
+INSTALLER_URL="https://marc-cr1810.github.io/antigravity-installer/install.sh"
+curl -fsSL "$INSTALLER_URL" | sudo -E env ANTIGRAVITY_LINUX_INSTALLER_URL="$INSTALLER_URL" bash -s -- --all --cli
+```
+
+### Alternative: Raw GitHub One-Liner
+
+If GitHub Pages is unavailable or if you prefer the raw repository source:
 
 ```bash
 INSTALLER_URL="https://raw.githubusercontent.com/marc-cr1810/antigravity-installer/main/install.sh"
 curl -fsSL "$INSTALLER_URL" | sudo -E env ANTIGRAVITY_LINUX_INSTALLER_URL="$INSTALLER_URL" bash -s -- --all
 ```
 
-## Update
+---
 
-Once installed from a published URL:
+## Managing & Updating
 
-```bash
-sudo antigravity-linux update --all
-```
+Once installed, the `antigravity-linux` manager command is available system-wide.
 
-Desktop app only:
-
-```bash
-sudo update-antigravity
-```
-
-IDE only:
-
-```bash
-sudo update-antigravity-ide
-```
-
-## Check for Updates
-
-Quickly check if newer versions are available on Google without downloading the full packages:
+### Check for Updates (Instant, No Download)
+Check if newer versions are available on Google without downloading packages *(no `sudo` required)*:
 
 ```bash
 antigravity-linux --check-update
 ```
 
-Or using the local script:
+```text
+╭──────────────────────────────────────────────────────────╮
+│ Antigravity Linux Installer                              │
+│ Google Antigravity 2.0 & IDE Setup (linux-x64)           │
+╰──────────────────────────────────────────────────────────╯
 
-```bash
-bash install.sh --check-update
+──➤ Checking for Updates (linux-x64)
+  ✔ Antigravity 2.0: up to date (v2.8.1)
+  ▲ Antigravity IDE: update available! (v2.5.4 ➔ v2.5.5)
+
+  • To install updates: sudo antigravity-linux update --all
 ```
 
-## Status
+### Apply Updates
+Update all installed components to the latest Google releases:
 
-When installed from a published URL:
+```bash
+sudo antigravity-linux update --all
+```
+
+Update only the desktop app or IDE:
+
+```bash
+sudo update-antigravity       # Desktop app only
+sudo update-antigravity-ide   # IDE only
+```
+
+### View Installation Status
+Inspect currently installed versions and launcher locations *(no `sudo` required)*:
 
 ```bash
 antigravity-linux --status
 ```
 
-For local-checkout installs without a stored installer URL, use the local script:
+### Inspect Official Download URLs
+View the exact Google tarball URLs and versions resolved from the official page:
 
 ```bash
-bash install.sh --status
+antigravity-linux --print-downloads
 ```
 
-## Uninstall
-
-When installed from a published URL:
+### Uninstall
+Remove all helper-managed binaries, desktop entries, icons, and file-manager extensions:
 
 ```bash
 sudo antigravity-linux --uninstall
 ```
 
-For local-checkout installs without a stored installer URL, use the local script:
+> **Note:** User configurations and personal workspaces in your home directory (`~/.config`, `~/.gemini`) are preserved.
+
+---
+
+## Legacy 1.x Migration
+
+If you previously installed the older Google Antigravity 1.x Debian package (`antigravity` package registered with `apt` / `/usr/share/antigravity`):
+
+- **Automatic Detection:** `antigravity-linux --status` and `install.sh` automatically detect if a legacy 1.x package is present.
+- **Interactive Cleanup:** During installation, you will be prompted if you'd like to remove the legacy package to avoid duplicate app launchers and path conflicts.
+- **Automated Removal:** Pass `--clean-legacy` to remove it non-interactively:
 
 ```bash
-sudo bash install.sh --uninstall
+INSTALLER_URL="https://marc-cr1810.github.io/antigravity-installer/install.sh"
+curl -fsSL "$INSTALLER_URL" | sudo -E env ANTIGRAVITY_LINUX_INSTALLER_URL="$INSTALLER_URL" bash -s -- --all --clean-legacy -y
 ```
 
-The uninstall removes helper-managed files from `/opt`, `/usr/local/bin`, `/usr/share/applications`, `/usr/share/icons`, and the Nautilus extension path. It does not delete user settings in home directories.
+---
 
-## Options
+## Options & CLI Flags
 
 ```text
---desktop          Install/update Antigravity 2.0 desktop app only
---ide              Install/update Antigravity IDE only
---all              Install/update desktop app + IDE
---cli              Also run Google's official Antigravity CLI installer
---clean-legacy     Remove legacy Antigravity 1.x Debian package if present
---no-nautilus      Skip GNOME Files/Nautilus context-menu helper
---no-apt           Do not install apt dependencies automatically
---force            Reinstall even when the recorded version matches
---install-url URL  Store URL used by the antigravity-linux update command
---status           Show installed helper-managed apps and versions
---check-update     Check if newer versions are available from Google
---print-downloads  Print resolved official Google tarball URLs
---uninstall        Remove helper-managed installation
--y, --yes          Non-interactive; assume yes where possible
+Usage:
+  install.sh [install|update] [options]
+  install.sh --status
+  install.sh --check-update
+  install.sh --print-downloads
+  install.sh --uninstall
+
+Options:
+  --desktop          Install/update Antigravity 2.0 desktop app only (default)
+  --ide              Install/update Antigravity IDE only
+  --all              Install/update Antigravity 2.0 desktop app + Antigravity IDE
+  --cli              Also run Google's official Antigravity CLI installer
+  --clean-legacy     Remove legacy Antigravity 1.x Debian package if present
+  --no-nautilus      Skip GNOME Files/Nautilus context-menu helper
+  --no-apt           Do not install apt dependencies automatically
+  --force            Reinstall even when the recorded version matches
+  --install-url URL  Store URL used by the antigravity-linux update command
+  --status           Show installed helper-managed apps and versions
+  --check-update     Check if newer versions are available from Google
+  --print-downloads  Print the resolved official Google tarball URLs
+  --uninstall        Remove helper-managed Antigravity desktop/IDE files
+  -y, --yes          Non-interactive; assume yes where possible
+  -h, --help         Show help message
 ```
 
-## What it installs
+---
 
-| Component | Path |
-|---|---|
-| Antigravity 2.0 | `/opt/antigravity` |
-| Antigravity IDE | `/opt/antigravity-ide` |
-| CLI launchers | `/usr/local/bin/antigravity`, `/usr/local/bin/antigravity-ide` |
-| Update helper | `/usr/local/bin/antigravity-linux` |
-| App launchers | `/usr/share/applications/antigravity*.desktop` |
-| Icons | `/usr/share/icons/hicolor/512x512/apps/` |
-| Nautilus extension | `/usr/share/nautilus-python/extensions/open-in-antigravity-ide.py` |
+## What It Installs
 
-## Supported systems
+| Component | Path | Description |
+|---|---|---|
+| **Antigravity 2.0** | `/opt/antigravity` | Official extracted Google Antigravity 2.0 application |
+| **Antigravity IDE** | `/opt/antigravity-ide` | Official extracted Google Antigravity IDE application |
+| **CLI Launchers** | `/usr/local/bin/antigravity`<br>`/usr/local/bin/antigravity-ide` | Terminal launcher commands |
+| **Manager / Updater** | `/usr/local/bin/antigravity-linux`<br>`/usr/local/bin/update-antigravity`<br>`/usr/local/bin/update-antigravity-ide` | Update and management utilities |
+| **Desktop Entries** | `/usr/share/applications/antigravity.desktop`<br>`/usr/share/applications/antigravity-ide.desktop` | Application menu & launcher entries |
+| **Application Icons** | `/usr/share/icons/hicolor/512x512/apps/` | High-resolution application icons |
+| **Nautilus Extension** | `/usr/share/nautilus-python/extensions/open-in-antigravity-ide.py` | "Open Folder in Antigravity IDE" right-click menu |
 
-Designed for Debian/Ubuntu-based distributions with `apt-get`.
+> **Tip (GNOME Files / Nautilus):** After installing the IDE, run `nautilus -q` in your terminal to restart the file manager and activate the right-click context menu.
 
-The script can also run on other Linux distributions if the required tools already exist:
+---
 
-- `bash`
-- `curl`
-- `tar`
-- `python3`
-- `desktop-file-utils`
-- `xdg-utils`
+## Supported Systems
 
-GNOME Files/Nautilus integration additionally needs `python3-nautilus`.
+### Minimum System Requirements
+- **glibc:** `≥ 2.28`
+- **glibcxx:** `≥ 3.4.25`
+- Supported on Ubuntu 20.04+, Debian 10+, Fedora 36+, RHEL 8+, Arch Linux, and modern Linux distributions.
 
-## GitHub Pages setup
+### Dependencies
+On Debian/Ubuntu-based systems, `apt-get` automatically installs prerequisites:
+- `ca-certificates`, `curl`, `tar`, `python3`, `desktop-file-utils`, `xdg-utils`
+- `python3-nautilus` *(optional, for GNOME Files right-click integration)*
 
-This repository includes a GitHub Actions workflow at `.github/workflows/pages.yml` that deploys the `docs/` directory to GitHub Pages.
+On other Linux distributions (Fedora, Arch, openSUSE), ensure `curl`, `tar`, `python3`, and `desktop-file-utils` are installed before running.
 
-1. Use this repository, `marc-cr1810/antigravity-installer`, or fork it under your own account.
-2. Push your changes to the `main` branch.
-3. Open **Settings → Pages**.
-4. Set **Build and deployment → Source** to **GitHub Actions**.
-5. Run or wait for the **Deploy GitHub Pages** workflow.
-6. Your installer will be available at:
+---
 
-```text
-https://marc-cr1810.github.io/antigravity-installer/install.sh
-```
+## Local Development & GitHub Pages
 
-## Local development
-
-Clone the repository:
-
+### Local Clone & Development
 ```bash
 git clone https://github.com/marc-cr1810/antigravity-installer.git
 cd antigravity-installer
-```
 
-Run local checks:
-
-```bash
+# Run repository tests and linters
 bash scripts/check.sh
-```
 
-Sync the GitHub Pages copy of the installer:
-
-```bash
+# Sync changes to docs/ for GitHub Pages
 bash scripts/sync-site.sh
-```
 
-Install from the local checkout:
-
-```bash
+# Test local install
 sudo bash install.sh --all
 ```
 
-## Security notes
+### GitHub Pages Setup for Forks
+1. Fork or push to your repository: `https://github.com/YOUR_USERNAME/antigravity-installer`.
+2. Go to **Settings → Pages**.
+3. Under **Build and deployment → Source**, select **GitHub Actions**.
+4. Pushing to `main` will automatically deploy your installer to `https://YOUR_USERNAME.github.io/antigravity-installer/install.sh`.
 
-This installer uses `sudo` because it installs system-wide files under `/opt`, `/usr/local/bin`, `/usr/share/applications`, and `/usr/share/icons`.
+---
 
-For safer review before running:
+## Security & Transparency
 
-```bash
-curl -fsSL "https://marc-cr1810.github.io/antigravity-installer/install.sh" -o install.sh
-less install.sh
-sudo bash install.sh --all
-```
+- **100% Open Source:** Inspect the entire installer before executing:
+  ```bash
+  curl -fsSL "https://marc-cr1810.github.io/antigravity-installer/install.sh" -o install.sh
+  less install.sh
+  sudo bash install.sh --all
+  ```
+- **Direct Official Sources:** Downloads only from Google official domains (`https://antigravity.google`, `storage.googleapis.com`, `edgedl.me.gvt1.com`).
+- **No Binary Modification:** Tarballs are verified, uncompressed directly, and desktop wrappers are placed cleanly.
+- **Reversible:** Clean uninstallation with `sudo antigravity-linux --uninstall`.
+
+---
 
 ## Contributing
 
-Contributions are welcome! Please open an issue or submit a pull request.
+Contributions, bug reports, and pull requests are welcome!
 
-> Read the [contributing guidelines](CONTRIBUTING.md) for more information.
+1. Check the [Contributing Guidelines](CONTRIBUTING.md).
+2. Open an issue or bug report on [GitHub Issues](https://github.com/marc-cr1810/antigravity-installer/issues).
 
-The easiest way to contribute is to check whether this works smoothly on your OS and if any issues arise, [open an issue](https://github.com/marc-cr1810/antigravity-installer/issues/new), describe the problem, your system details, and screenshots (if possible).
-
-### Currently Confirmed OSes
-
-- Ubuntu 24 (LTS)
+---
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT License. See [LICENSE](LICENSE) for details.
